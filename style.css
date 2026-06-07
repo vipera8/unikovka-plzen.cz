@@ -16,8 +16,8 @@
 @media(max-width:420px){.station-title-text{font-size:17px}.beer-small{width:34px;height:43px}.station-head.compact{padding:9px 9px 9px 11px}.icon-btn.danger{padding:8px 9px}.beer-large{width:min(46vw,150px)}}
 
 /* Úvodní obrazovka – finální název hry */
-.start-visual{margin:0 0 12px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.32);background:#2b1708;box-shadow:0 10px 20px rgba(72,40,13,.14)}
-.start-visual img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;object-position:center center}
+.start-visual{width:min(100%, 500px);margin:0 auto 12px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.32);background:#2b1708;box-shadow:0 10px 20px rgba(72,40,13,.14)}
+.start-visual img{display:block;width:100%;height:auto;object-fit:contain;object-position:center center}
 .hero-intro{text-align:left;padding:28px 19px 22px}
 .hero-intro h1{font-size:38px;letter-spacing:.01em;margin-bottom:8px}
 .hero-subtitle{font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#5b3512;margin:0 0 16px;line-height:1.35}
@@ -26,9 +26,10 @@
 
 /* Úvodní obrazovka – Použití polohy */
 .location-accordion{background:rgba(255,250,238,.72)}
-.location-body{white-space:normal}
-.location-body p{font-size:15px;line-height:1.35;margin:0 0 13px;color:#2b180a}
-.location-body .btn{margin-top:4px}
+.location-body{white-space:normal;background:rgba(255,248,224,.82)}
+.location-body p{font-size:15px;line-height:1.35;margin:0;color:#2b180a}
+.location-actions{padding:14px;background:rgba(255,250,238,.72);border-top:1px solid var(--line)}
+.location-actions .btn{margin-top:0}
 .text-link{appearance:none;border:0;background:transparent;color:#6f3d12;text-decoration:underline;text-underline-offset:3px;box-shadow:none;width:auto;display:block;margin:12px auto 0;padding:4px 8px;font-weight:700;font-size:13px;cursor:pointer}
 .text-link:active{transform:translateY(1px)}
 .location-skip{opacity:.78}
