@@ -73,6 +73,8 @@
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th,.admin-table td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
 .admin-table th{font-weight:850;background:rgba(111,61,18,.08)}
+.rules-modal{max-height:58vh;overflow:auto;line-height:1.55}
+.rules-modal .text-para{font-size:14px}
 
 
 .admin-card{background:rgba(255,248,224,.65);border:1px solid var(--line);border-radius:18px;padding:12px;margin:12px 0;overflow-x:auto}
