@@ -7,9 +7,13 @@ const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 const now = () => Date.now();
 const normalize = s => (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
 const fmtTime = ms => { ms=Math.max(0,ms||0); const s=Math.floor(ms/1000); const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sec=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };
-const getState = () => JSON.parse(localStorage.getItem(LS_KEY)||'null');
+const readJson = (key, fallback) => {
+ try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+ catch(e){ localStorage.removeItem(key); return fallback; }
+};
+const getState = () => readJson(LS_KEY, null);
 const saveState = s => { localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; };
-const adminLog = () => JSON.parse(localStorage.getItem(ADMIN_KEY)||'[]');
+const adminLog = () => readJson(ADMIN_KEY, []);
 const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); };
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
 const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}`;
@@ -535,7 +539,7 @@ function renderFinish(){
     </section>
   </div>
   <div class="grid cert-actions no-print" style="margin-top:14px">
-    <button class="btn" onclick="window.print()">Stáhnout / vytisknout certifikát</button>
+    <button class="btn" onclick="printCertificate()">Stáhnout / vytisknout certifikát</button>
     <button class="btn secondary" onclick="shareResult()">Sdílet výsledek</button>
     <button class="btn ghost" onclick="openLeaderboard()">Žebříček</button>
   </div>`);
@@ -547,9 +551,9 @@ function renderFinish(){
 const CERT_DEBUG = false;
 const CERT_TEMPLATE_SIZE = { width: 941, height: 1672 };
 const CERT_FIELDS = {
-  team:      { x: 285, y: 632,  w: 360, h: 62,  font: 38, align: 'center' },
-  time:      { x: 449, y: 1036, w: 205, h: 48,  font: 24, align: 'left' },
-  hints:     { x: 579, y: 1114, w:  95, h: 48,  font: 24, align: 'left' },
+  team:      { x: 285, y: 643,  w: 360, h: 62,  font: 38, align: 'center' },
+  time:      { x: 449, y: 1019, w: 205, h: 48,  font: 24, align: 'left' },
+  hints:     { x: 568, y: 1114, w:  95, h: 48,  font: 24, align: 'left' },
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
 
@@ -752,21 +756,26 @@ function adminLogHtml(rows){
 }
 
 function adminLogin(){
- const pass = ($('#adminPass')?.value || '').trim();
- if(pass!==String(DATA.adminPassword || '').trim()) return toast('Špatné heslo.');
- const s=getState();
- const rows=adminLog();
- modal(`<h2>Admin panel</h2>
-  <div class="grid two admin-actions">
-   <button class="btn secondary" onclick="adminJump()">Přeskočit zastávku</button>
-   <button class="btn secondary" onclick="adminUnlockNext()">Odemknout další</button>
-   <button class="btn danger" onclick="resetGame()">Reset hry</button>
-  </div>
-  ${adminTeamCard(s, rows)}
-  <div class="admin-card">${adminWrongHtml(s, rows)}</div>
-  <div class="admin-card">${adminHintsSummary(s)}</div>
-  <div class="admin-card">${adminLogHtml(rows)}</div>
-  <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`);
+ try{
+  const pass = ($('#adminPass')?.value || '').trim();
+  if(pass!==String(DATA.adminPassword || '').trim()) return toast('Špatné heslo.');
+  const s=getState();
+  const rows=adminLog();
+  modal(`<h2>Admin panel</h2>
+   <div class="grid two admin-actions">
+    <button class="btn secondary" onclick="adminJump()">Přeskočit zastávku</button>
+    <button class="btn secondary" onclick="adminUnlockNext()">Odemknout další</button>
+    <button class="btn danger" onclick="resetGame()">Reset hry</button>
+   </div>
+   ${adminTeamCard(s, rows)}
+   <div class="admin-card">${adminWrongHtml(s, rows)}</div>
+   <div class="admin-card">${adminHintsSummary(s)}</div>
+   <div class="admin-card">${adminLogHtml(rows)}</div>
+   <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`);
+ }catch(e){
+  console.error(e);
+  toast('Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.');
+ }
 }
 function adminJump(){
  const n=prompt('Číslo zastávky 1–13:');
@@ -854,6 +863,12 @@ async function shareResult(){
 }
 
 function exportData(){ const blob=new Blob([JSON.stringify({state:getState(),log:adminLog(),leaderboard:JSON.parse(localStorage.getItem('grollLeaderboard.v1')||'[]')},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grollova-cesta-export.json'; a.click(); }
+function printCertificate(){
+ closeModal();
+ document.body.classList.add('printing-certificate');
+ setTimeout(()=>window.print(), 80);
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing-certificate'));
 function openSOS(){
  const s=getState();
  if(s) addLog('sos_opened');
