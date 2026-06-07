@@ -1,5 +1,6 @@
 ﻿window.GAME_DATA = {
   "adminPassword": "Groll1813",
+  "leaderboardEndpoint": "",
   "gpsMode": "warn",
   "gpsRadiusMeters": 150,
   "phone": "+420737256827",
@@ -373,3 +374,4 @@
     "ZLATASTOPA"
   ]
 };
+

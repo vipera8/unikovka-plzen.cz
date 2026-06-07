@@ -22,6 +22,29 @@ function defaultState(team){ return { id: globalThis.crypto?.randomUUID?.() || (
 function shell(inner){ return `<main class="phone"><header class="topbar"><div class="brand"><b>Grollova cesta</b><span>${getState()?.team ? escapeHtml(getState().team)+' · ' : ''}<span class="timer" id="timer">0:00:00</span></span></div><button class="icon-btn" onclick="openMenu()">☰</button></header><section class="content">${inner}</section></main>`; }
 function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 function escapeAttr(s){return escapeHtml(String(s||''));}
+function applyCzechTypography(root=document.body){
+ const skipTags=new Set(['SCRIPT','STYLE','TEXTAREA','INPUT','SELECT','OPTION']);
+ const walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+  acceptNode(node){
+   const parent=node.parentElement;
+   if(!parent || skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+   if(!node.nodeValue || !/[ \u00a0][szkvaiouSZKVAIOU] /u.test(' '+node.nodeValue)) return NodeFilter.FILTER_REJECT;
+   return NodeFilter.FILTER_ACCEPT;
+  }
+ });
+ const nodes=[];
+ while(walker.nextNode()) nodes.push(walker.currentNode);
+ for(const node of nodes){
+  node.nodeValue=node.nodeValue.replace(/(^|[\s(])([szkvaiouSZKVAIOU])\s+/gu, '$1$2\u00a0');
+ }
+}
+let typographyTimer=null;
+function scheduleTypography(root=document.body){
+ clearTimeout(typographyTimer);
+ typographyTimer=setTimeout(()=>applyCzechTypography(root), 0);
+}
+const typographyObserver=new MutationObserver(()=>scheduleTypography(document.body));
+typographyObserver.observe(document.body, {childList:true, subtree:true});
 function cleanDisplayText(text){
  let t = (text||'').toString().trim().replace(/^Groll:\s*/i, '').trim();
  const startsWithOuterQuote = /^[„“\"]/.test(t);
@@ -201,7 +224,7 @@ window.verifyAccessCode = verifyAccessCode;
 function renderAdminEntry(){
  const backAction = getState() ? 'returnToGame()' : 'backToWebsite()';
  const backText = getState() ? 'Zpět do hry' : 'Zpět na web';
- app.innerHTML = `<main class="phone"><section class="content"><div class="hero hero-intro"><h1>Admin / test</h1><p>Přístup do administrace a testovacího režimu.</p></div><form id="adminLoginForm" class="card"><input id="adminPass" type="password" placeholder="Heslo" autocomplete="current-password"><button id="adminLoginBtn" class="btn" style="margin-top:10px" type="submit">Vstoupit</button><p id="adminLoginError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px"></p><p class="small muted">Admin se nezobrazuje v hráčském menu. Přístup je pouze přes adresu /admin a heslo.</p></form><button class="btn ghost" onclick="${backAction}">${backText}</button></section></main>`;
+ app.innerHTML = `<main class="phone"><section class="content"><div class="hero hero-intro"><h1>Admin / test</h1><p>Přístup do administrace a testovacího režimu.</p></div><form id="adminLoginForm" class="card" onsubmit="return adminLogin(event)"><input id="adminPass" type="password" placeholder="Heslo" autocomplete="current-password"><button id="adminLoginBtn" class="btn" style="margin-top:10px" type="submit" onclick="return adminLogin(event)">Vstoupit</button><p id="adminLoginError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px"></p><p class="small muted">Admin se nezobrazuje v hráčském menu. Přístup je pouze přes adresu /admin a heslo.</p></form><button class="btn ghost" onclick="${backAction}">${backText}</button></section></main>`;
  const form=$('#adminLoginForm');
  const input=$('#adminPass');
  if(form) form.addEventListener('submit', e=>{ e.preventDefault(); adminLogin(); });
@@ -546,10 +569,15 @@ function renderFinish(){
 const CERT_DEBUG = false;
 const CERT_TEMPLATE_SIZE = { width: 941, height: 1672 };
 const CERT_FIELDS = {
-  team:      { x: 285, y: 643,  w: 360, h: 62,  font: 38, align: 'center' },
+  team:      { x: 255, y: 643,  w: 420, h: 76,  font: 34, align: 'center' },
   time:      { x: 449, y: 1025, w: 205, h: 48,  font: 24, align: 'left' },
   hints:     { x: 568, y: 1114, w:  95, h: 48,  font: 24, align: 'left' },
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
+};
+const CERT_DOWNLOAD_OFFSET = {
+  time: 11,
+  hints: 11,
+  solutions: 11
 };
 
 function certFieldStyle(fieldName){
@@ -750,13 +778,15 @@ function adminLogHtml(rows){
  return `<h3>Log událostí</h3><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Detail</th></tr>${rows.slice(-80).reverse().map(r=>`<tr><td>${adminDate(r.time)}</td><td>${escapeHtml(adminEventName(r))}</td><td>${adminEventDetail(r)}</td></tr>`).join('')}</table>`;
 }
 
-function adminLogin(){
+function adminLogin(event){
+ if(event) event.preventDefault();
  try{
   const input=$('#adminPass');
   const error=$('#adminLoginError');
   const pass = (input?.value || '').trim();
+  const adminPassword = String(window.GAME_DATA?.adminPassword || 'Groll1813').trim();
   if(error){ error.style.display='none'; error.textContent=''; }
-  if(pass!==String(DATA.adminPassword || '').trim()){
+  if(pass!==adminPassword){
    if(error){ error.textContent='Špatné heslo.'; error.style.display='block'; }
    if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
    return toast('Špatné heslo.');
@@ -778,8 +808,9 @@ function adminLogin(){
   console.error(e);
   const error=$('#adminLoginError');
   if(error){ error.textContent='Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.'; error.style.display='block'; }
-  toast('Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.');
+  modal(`<h2>Admin panel</h2><p>Heslo bylo přijato, ale detailní přehled se nepodařilo sestavit. Základní admin akce jsou dostupné níže.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminJump()">Přeskočit zastávku</button><button class="btn secondary" onclick="adminUnlockNext()">Odemknout další</button><button class="btn danger" onclick="resetGame()">Reset hry</button><button class="btn ghost" onclick="exportData()">Stáhnout technická data</button></div>`, true);
  }
+ return false;
 }
 window.adminLogin = adminLogin;
 function adminJump(){
@@ -812,6 +843,7 @@ function adminUnlockNext(){
 }
 function resetGame(){ if(confirm('Opravdu resetovat lokální hru?')){ localStorage.removeItem(LS_KEY); localStorage.removeItem(ADMIN_KEY); closeModal(); renderStart(); } }
 function leaderboardKey(){ return 'grollLeaderboard.v1'; }
+function leaderboardEndpoint(){ return String(window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
 function buildLeaderboardEntry(){
  const s=getState();
  if(!s || !s.finished) return null;
@@ -828,11 +860,14 @@ function buildLeaderboardEntry(){
   date:new Date(s.finishTime||now()).toISOString()
  };
 }
-function addLeaderboardOnce(){
- const entry=buildLeaderboardEntry();
- if(!entry) return;
+function localLeaderboardRows(){
  let rows=[];
  try{ rows=JSON.parse(localStorage.getItem(leaderboardKey())||'[]'); }catch(e){ rows=[]; }
+ return rows.filter(Boolean);
+}
+function saveLocalLeaderboard(entry){
+ if(!entry) return;
+ const rows=localLeaderboardRows();
  const exists=rows.some(r=>r && r.id===entry.id);
  if(!exists){
   rows.push(entry);
@@ -840,16 +875,57 @@ function addLeaderboardOnce(){
   localStorage.setItem(leaderboardKey(), JSON.stringify(rows.slice(0,50)));
  }
 }
-function openLeaderboard(){
- let rows=[];
- try{ rows=JSON.parse(localStorage.getItem(leaderboardKey())||'[]'); }catch(e){ rows=[]; }
+function leaderboardUrl(action, params={}){
+ const endpoint=leaderboardEndpoint();
+ if(!endpoint) return '';
+ const url=new URL(endpoint);
+ url.searchParams.set('action', action);
+ for(const [key,value] of Object.entries(params)){
+  if(value!==undefined && value!==null) url.searchParams.set(key, String(value));
+ }
+ return url.toString();
+}
+async function addLeaderboardOnce(){
+ const entry=buildLeaderboardEntry();
+ if(!entry) return;
+ saveLocalLeaderboard(entry);
+ const url=leaderboardUrl('add', entry);
+ if(!url) return;
+ try{
+  await fetch(url, {cache:'no-store'});
+ }catch(e){
+  console.warn('Online leaderboard submit failed', e);
+ }
+}
+async function fetchOnlineLeaderboard(){
+ const url=leaderboardUrl('list');
+ if(!url) return null;
+ const resp=await fetch(url, {cache:'no-store'});
+ if(!resp.ok) throw new Error('Leaderboard response failed');
+ const data=await resp.json();
+ return Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : []);
+}
+async function openLeaderboard(){
+ let rows=localLeaderboardRows();
+ let sourceText = leaderboardEndpoint()
+  ? 'Společný online žebříček výsledků všech týmů.'
+  : 'Společný online žebříček zatím není nastavený. Dočasně se zobrazují jen výsledky uložené v tomto zařízení.';
+ if(leaderboardEndpoint()){
+  try{
+   const onlineRows=await fetchOnlineLeaderboard();
+   if(onlineRows) rows=onlineRows;
+  }catch(e){
+   console.warn('Online leaderboard load failed', e);
+   sourceText='Online žebříček se teď nepodařilo načíst. Zobrazuji záložní výsledky uložené v tomto zařízení.';
+  }
+ }
  rows=rows.filter(Boolean).sort((a,b)=>(a.total||0)-(b.total||0));
  if(!rows.length){
-  modal('<h2>Žebříček</h2><p>Zatím tu není žádný zapsaný výsledek.</p>');
+  modal(`<h2>Žebříček</h2><p>Zatím tu není žádný zapsaný výsledek.</p><p class="small muted">${sourceText}</p>`);
   return;
  }
  const table = rows.slice(0,20).map((r,i)=>`<tr><td>${i+1}.</td><td>${escapeHtml(r.team||'—')}</td><td>${fmtTime(r.total||0)}</td><td>${escapeHtml(r.title||'—')}</td></tr>`).join('');
- modal(`<h2>Žebříček</h2><div style="overflow:auto"><table class="leaderboard-table"><thead><tr><th>Pořadí</th><th>Tým</th><th>Čas</th><th>Titul</th></tr></thead><tbody>${table}</tbody></table></div><p class="small muted" style="margin-top:10px">Ukládá se až 50 nejnovějších / nejlepších výsledků v tomto zařízení.</p>`);
+ modal(`<h2>Žebříček</h2><div style="overflow:auto"><table class="leaderboard-table"><thead><tr><th>Pořadí</th><th>Tým</th><th>Čas</th><th>Titul</th></tr></thead><tbody>${table}</tbody></table></div><p class="small muted" style="margin-top:10px">${sourceText}</p>`);
 }
 async function shareResult(){
  const s=getState();
@@ -914,7 +990,7 @@ async function createCertificateBlob(){
  ctx.textBaseline='middle';
  const drawField=(name, text)=>{
   const f=CERT_FIELDS[name];
-  const centerY=f.y + f.h / 2;
+  const centerY=f.y + f.h / 2 + (CERT_DOWNLOAD_OFFSET[name] || 0);
   const weight=700;
   const size=name==='team' ? fitCanvasFont(ctx, weight, f.font, 22, text, f.w) : f.font;
   ctx.font=`${weight} ${size}px Georgia, "Times New Roman", serif`;

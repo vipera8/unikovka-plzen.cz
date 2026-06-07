@@ -1290,9 +1290,10 @@
 }
 #field-team{
   justify-content:center;
-  white-space:nowrap;
+  white-space:normal;
   letter-spacing:.02em;
-  line-height:1;
+  line-height:1.06;
+  align-items:center;
 }
 #field-time,
 #field-hints,
@@ -1466,4 +1467,17 @@
 @media(max-width:420px){
   .share-grid{grid-template-columns:1fr}
   .share-btn.native{grid-column:auto}
+}
+
+/* v93 soft fades for presentation images */
+.voucher-illustration,
+.team-illustration,
+.compass-art img{
+  border-radius:30px!important;
+  filter:drop-shadow(0 16px 38px rgba(0,0,0,.35))!important;
+  -webkit-mask-image:radial-gradient(ellipse at center, rgba(0,0,0,1) 28%, rgba(0,0,0,.96) 42%, rgba(0,0,0,.78) 58%, rgba(0,0,0,.45) 73%, rgba(0,0,0,.16) 88%, rgba(0,0,0,0) 100%)!important;
+  mask-image:radial-gradient(ellipse at center, rgba(0,0,0,1) 28%, rgba(0,0,0,.96) 42%, rgba(0,0,0,.78) 58%, rgba(0,0,0,.45) 73%, rgba(0,0,0,.16) 88%, rgba(0,0,0,0) 100%)!important;
+}
+.compass-art img{
+  max-width:min(100%,330px)!important;
 }
