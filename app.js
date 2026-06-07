@@ -547,10 +547,10 @@ function renderFinish(){
 const CERT_DEBUG = false;
 const CERT_TEMPLATE_SIZE = { width: 941, height: 1672 };
 const CERT_FIELDS = {
-  team:      { x: 300, y: 645,  w: 360, h: 62,  font: 38, align: 'center' },
-  time:      { x: 520, y: 1034, w: 205, h: 48,  font: 24, align: 'left' },
-  hints:     { x: 592, y: 1124, w:  95, h: 48,  font: 24, align: 'left' },
-  solutions: { x: 592, y: 1212, w:  95, h: 48,  font: 24, align: 'left' }
+  team:      { x: 285, y: 632,  w: 360, h: 62,  font: 38, align: 'center' },
+  time:      { x: 478, y: 1018, w: 205, h: 48,  font: 24, align: 'left' },
+  hints:     { x: 550, y: 1108, w:  95, h: 48,  font: 24, align: 'left' },
+  solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
 
 function certFieldStyle(fieldName){
@@ -853,11 +853,26 @@ async function shareResult(){
 }
 
 function exportData(){ const blob=new Blob([JSON.stringify({state:getState(),log:adminLog(),leaderboard:JSON.parse(localStorage.getItem('grollLeaderboard.v1')||'[]')},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grollova-cesta-export.json'; a.click(); }
+function openSOS(){
+ const s=getState();
+ if(s) addLog('sos_opened');
+ const pos = s?.lastPos ? `<p class="small"><b>Poslední známá poloha:</b><br>${s.lastPos.lat.toFixed(6)}, ${s.lastPos.lng.toFixed(6)}</p>` : '<p class="small muted">Poloha zatím není uložená. Pokud potřebujete pomoc, zavolejte nebo napište správci hry.</p>';
+ modal(`<h2>SOS</h2><p>Pokud nastal technický problém, nejste si jistí dalším postupem nebo potřebujete pomoc správce hry, použijte kontakty níže.</p>${pos}<div class="menu-list">
+  <a class="btn" href="tel:+420737256827" style="display:block;text-align:center;text-decoration:none">Zavolat správci</a>
+  <a class="btn secondary" href="sms:+420737256827" style="display:block;text-align:center;text-decoration:none">Poslat SMS</a>
+  <button class="btn ghost" onclick="closeModal()">Zpět do hry</button>
+ </div>`, false);
+}
+function openRulesModal(){
+ modal(`<h2>Pravidla hry</h2><div class="rules-modal">${ptxt(rulesText())}</div><button class="btn ghost" onclick="closeModal()">Zpět do hry</button>`, false);
+}
 function openMenu(){
  const s=getState();
  const stationLine = s && !s.finished ? `<p class="small muted">Aktuální zastávka: ${s.currentStation}/${DATA.stations.length}</p>` : '';
  modal(`<h2>Menu</h2>${stationLine}<div class="menu-list">
   <button class="btn" onclick="closeModal(); returnToGame()">Zpět do hry</button>
+  <button class="btn danger" onclick="closeModal(); openSOS()">SOS</button>
+  <button class="btn secondary" onclick="closeModal(); openRulesModal()">Pravidla hry</button>
   <button class="btn secondary" onclick="closeModal(); openLeaderboard()">Žebříček</button>
   <button class="btn ghost" onclick="closeModal(); backToWebsite()">Zpět na web</button>
  </div>`, false);
