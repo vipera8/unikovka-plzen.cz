@@ -201,16 +201,11 @@ window.verifyAccessCode = verifyAccessCode;
 function renderAdminEntry(){
  const backAction = getState() ? 'returnToGame()' : 'backToWebsite()';
  const backText = getState() ? 'Zpět do hry' : 'Zpět na web';
- app.innerHTML = `<main class="phone"><section class="content"><div class="hero hero-intro"><h1>Admin / test</h1><p>Přístup do administrace a testovacího režimu.</p></div><div class="card"><input id="adminPass" type="password" placeholder="Heslo" autocomplete="current-password"><button id="adminLoginBtn" class="btn" style="margin-top:10px" type="button" onclick="adminLogin()">Vstoupit</button><p class="small muted">Admin se nezobrazuje v hráčském menu. Přístup je pouze přes adresu /admin a heslo.</p></div><button class="btn ghost" onclick="${backAction}">${backText}</button></section></main>`;
- setTimeout(()=>{
-  const input=$('#adminPass');
-  const btn=$('#adminLoginBtn');
-  if(btn) btn.addEventListener('click', adminLogin);
-  if(input){
-   input.focus();
-   input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); adminLogin(); }});
-  }
- },50);
+ app.innerHTML = `<main class="phone"><section class="content"><div class="hero hero-intro"><h1>Admin / test</h1><p>Přístup do administrace a testovacího režimu.</p></div><form id="adminLoginForm" class="card"><input id="adminPass" type="password" placeholder="Heslo" autocomplete="current-password"><button id="adminLoginBtn" class="btn" style="margin-top:10px" type="submit">Vstoupit</button><p id="adminLoginError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px"></p><p class="small muted">Admin se nezobrazuje v hráčském menu. Přístup je pouze přes adresu /admin a heslo.</p></form><button class="btn ghost" onclick="${backAction}">${backText}</button></section></main>`;
+ const form=$('#adminLoginForm');
+ const input=$('#adminPass');
+ if(form) form.addEventListener('submit', e=>{ e.preventDefault(); adminLogin(); });
+ if(input) setTimeout(()=>input.focus(), 50);
 }
 
 function renderStart(){ app.innerHTML = `<main class="phone"><section class="content"><figure class="start-visual"><img src="assets/images/groll_uvod.jpg" alt="Grollova zlatá stopa" loading="eager"></figure><div class="hero hero-intro"><h1>Grollova zlatá stopa</h1><p class="hero-subtitle">Venkovní úniková hra v historickém srdci Plzně.</p><p class="lead">Vydejte se po stopách muže, který změnil chuť Plzně. Čeká vás 13 zastávek, historické město a zamčená tajemství. Dívejte se pozorně, poslouchejte a použijte vše, co po cestě získáte.</p></div><div class="card"><label>Název týmu</label><input id="teamName" type="text" placeholder="Např. Sládkové z Plzně" autocomplete="off"></div><div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Pravidla hry <span>⌄</span></button><div class="acc-body">${rulesText()}</div></div><div class="card"><label class="check"><input id="agree" type="checkbox"> <span>Potvrzuji, že se účastním hry dobrovolně a na vlastní odpovědnost. Budu dodržovat pravidla hry, pravidla silničního provozu a nebudu vstupovat do nebezpečných ani zakázaných míst.</span></label></div><div class="accordion location-accordion open"><button class="acc-head" onclick="toggleAcc(this)">Použití polohy <span>⌄</span></button><div class="acc-body location-body"><p>Poloha nám pomůže navést vás k další zastávce, ověřit, že jste na správném místě, a v případě SOS poslat správci vaši aktuální pozici.</p><button class="btn" onclick="requestPosBeforeStart()">Povolit polohu</button><button class="text-link location-skip" onclick="continueWithoutLocation()">Pokračovat bez polohy</button></div></div><button class="btn" onclick="startGame()">Načepovat první stopu</button></section></main>`; }
@@ -757,8 +752,15 @@ function adminLogHtml(rows){
 
 function adminLogin(){
  try{
-  const pass = ($('#adminPass')?.value || '').trim();
-  if(pass!==String(DATA.adminPassword || '').trim()) return toast('Špatné heslo.');
+  const input=$('#adminPass');
+  const error=$('#adminLoginError');
+  const pass = (input?.value || '').trim();
+  if(error){ error.style.display='none'; error.textContent=''; }
+  if(pass!==String(DATA.adminPassword || '').trim()){
+   if(error){ error.textContent='Špatné heslo.'; error.style.display='block'; }
+   if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
+   return toast('Špatné heslo.');
+  }
   const s=getState();
   const rows=adminLog();
   modal(`<h2>Admin panel</h2>
@@ -774,9 +776,12 @@ function adminLogin(){
    <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`);
  }catch(e){
   console.error(e);
+  const error=$('#adminLoginError');
+  if(error){ error.textContent='Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.'; error.style.display='block'; }
   toast('Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.');
  }
 }
+window.adminLogin = adminLogin;
 function adminJump(){
  const n=prompt('Číslo zastávky 1–13:');
  if(n===null) return;
