@@ -1,0 +1,1 @@
+Sem vlozte dalsi MP4 soubory. Aplikace ocekava nazvy 01.mp4 az 13.mp4, pripadne specialne 01b.mp4 pro druhou fazi prvni zastavky a 05_znelka.mp3 pro znelku. Soubor demo.mp4 je pouzit jako fallback, dokud video neexistuje.
