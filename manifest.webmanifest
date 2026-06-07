@@ -1,0 +1,10 @@
+{
+  "name": "Grollova zlatá stopa",
+  "short_name": "Zlatá stopa",
+  "description": "Mobilní webová aplikace pro venkovní únikovou hru v Plzni.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1f1208",
+  "theme_color": "#6f3d12",
+  "icons": []
+}
