@@ -834,6 +834,19 @@ function adminDate(iso){
   return new Date(iso).toLocaleString('cs-CZ', {day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
  }catch(e){ return '—'; }
 }
+function adminRows(){
+ const rows=adminLog();
+ if(!Array.isArray(rows)) return [];
+ return rows
+  .filter(row=>row && typeof row === 'object')
+  .map(row=>({
+   ...row,
+   type:String(row.type || ''),
+   team:String(row.team || ''),
+   time:row.time || '',
+   station:row.station || ''
+  }));
+}
 function adminTimeOnly(iso){
  if(!iso) return '—';
  try{
@@ -929,7 +942,7 @@ function adminStationSelect(){
 }
 function adminPanelHtml(){
  const s=getState();
- const rows=adminLog();
+ const rows=adminRows();
  const safeCard=(title, fn)=>{
   try{ return fn(); }
   catch(e){ console.error('Admin section failed:', title, e); return `<div class="admin-card"><h3>${escapeHtml(title)}</h3><p class="small muted">Tuto část se nepodařilo načíst.</p></div>`; }
@@ -1004,10 +1017,11 @@ async function loadOnlineAdmin(){
  }
  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p>';
  try{
-  const data=await loadJsonp(monitorUrl('admin', {adminPassword: window._adminPass || ''}));
+  const adminPassword=window._adminPass || String(window.GAME_DATA?.adminPassword || '').trim();
+  const data=await loadJsonp(monitorUrl('admin', {adminPassword, _: Date.now()}));
   if(data?.error === 'unauthorized') throw new Error('Unauthorized admin monitor');
-  const teams=Array.isArray(data?.teams) ? data.teams : [];
-  const events=Array.isArray(data?.events) ? data.events : [];
+  const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
+  const events=Array.isArray(data?.events) ? data.events : (Array.isArray(data?.rows?.events) ? data.rows.events : []);
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
   panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí</h3>${onlineEventsHtml(events)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
  }catch(e){
