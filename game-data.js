@@ -1,6 +1,7 @@
 ﻿window.GAME_DATA = {
   "adminPassword": "Groll1813",
   "leaderboardEndpoint": "",
+  "gameMonitorEndpoint": "",
   "gpsMode": "warn",
   "gpsRadiusMeters": 150,
   "phone": "+420737256827",

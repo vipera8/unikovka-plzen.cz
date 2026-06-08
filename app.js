@@ -3,6 +3,7 @@ const $ = (sel, root=document) => root.querySelector(sel);
 const app = $('#app');
 const LS_KEY = 'grollovaCestaState.v1';
 const ADMIN_KEY = 'grollovaCestaAdminLog.v1';
+const ACCESS_CODE_KEY = 'grollovaCestaAccessCode.v1';
 const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 const now = () => Date.now();
 const normalize = s => (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
@@ -12,12 +13,97 @@ const readJson = (key, fallback) => {
  catch(e){ localStorage.removeItem(key); return fallback; }
 };
 const getState = () => readJson(LS_KEY, null);
-const saveState = s => { localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; };
+const saveState = s => { localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
 const adminLog = () => readJson(ADMIN_KEY, []);
-const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); };
+const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s); };
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
 const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}`;
 const station = id => DATA.stations[id-1];
+function monitorEndpoint(){ return String(window.GAME_DATA?.gameMonitorEndpoint || window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
+function monitorUrl(action, params={}){
+ const endpoint=monitorEndpoint();
+ if(!endpoint) return '';
+ const url=new URL(endpoint);
+ url.searchParams.set('action', action);
+ for(const [key,value] of Object.entries(params)){
+  if(value!==undefined && value!==null) url.searchParams.set(key, String(value));
+ }
+ return url.toString();
+}
+function fireAndForget(url){
+ if(!url) return;
+ const img=new Image();
+ img.src=url;
+}
+function publicTeamState(s){
+ if(!s) return null;
+ return {
+  id:s.id,
+  team:s.team || '',
+  accessCode:s.accessCode || '',
+  startTime:s.startTime || 0,
+  currentStation:s.currentStation || 1,
+  stationTitle:station(s.currentStation)?.title || '',
+  unlocked:s.unlocked || 1,
+  completed:s.completed || [],
+  hints:s.hints || {},
+  solutions:s.solutions || {},
+  wrong:s.wrong || {},
+  wrongTotal:s.wrongTotal || 0,
+  lastPos:s.lastPos || null,
+  gpsConsent:!!s.gpsConsent,
+  finished:!!s.finished,
+  finishTime:s.finishTime || null,
+  updatedAt:new Date().toISOString()
+ };
+}
+function syncTeamState(s){
+ const data=publicTeamState(s);
+ if(!data?.id) return;
+ fireAndForget(monitorUrl('state', {
+  id:data.id,
+  team:data.team,
+  accessCode:data.accessCode,
+  currentStation:data.currentStation,
+  stationTitle:data.stationTitle,
+  startTime:data.startTime,
+  updatedAt:data.updatedAt,
+  finished:data.finished ? 1 : 0,
+  finishTime:data.finishTime || '',
+  hints:JSON.stringify(data.hints),
+  solutions:JSON.stringify(data.solutions),
+  wrong:JSON.stringify(data.wrong),
+  wrongTotal:data.wrongTotal,
+  completed:JSON.stringify(data.completed),
+  lastPos:data.lastPos ? JSON.stringify(data.lastPos) : ''
+ }));
+}
+function sendMonitorEvent(row, s){
+ if(!s?.id) return;
+ fireAndForget(monitorUrl('event', {
+  teamId:s.id,
+  team:s.team || '',
+  accessCode:s.accessCode || '',
+  time:row.time,
+  type:row.type,
+  station:row.station || s.currentStation || 1,
+  detail:JSON.stringify(row)
+ }));
+}
+function loadJsonp(url){
+ return new Promise((resolve,reject)=>{
+  const cb='grollJsonp_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+  const full=new URL(url);
+  full.searchParams.set('callback', cb);
+  const script=document.createElement('script');
+  const cleanup=()=>{ delete window[cb]; script.remove(); };
+  const timer=setTimeout(()=>{ cleanup(); reject(new Error('JSONP timeout')); }, 12000);
+  window[cb]=data=>{ clearTimeout(timer); cleanup(); resolve(data); };
+  script.onerror=()=>{ clearTimeout(timer); cleanup(); reject(new Error('JSONP failed')); };
+  script.src=full.toString();
+  document.head.appendChild(script);
+ });
+}
 function defaultState(team){ return { id: globalThis.crypto?.randomUUID?.() || ('team-'+Date.now()), team, startTime: now(), currentStation:1, unlocked:1, completed:[], wrong:{}, wrongTotal:0, hints:{}, solutions:{}, diaryUnlocked:false, gpsConsent:false, gpsBypass:[], lastPos:null, finished:false, finishTime:null, offlineReady:false }; }
 function shell(inner){ return `<main class="phone"><header class="topbar"><div class="brand"><b>Grollova cesta</b><span>${getState()?.team ? escapeHtml(getState().team)+' · ' : ''}<span class="timer" id="timer">0:00:00</span></span></div><button class="icon-btn" onclick="openMenu()">☰</button></header><section class="content">${inner}</section></main>`; }
 function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
@@ -215,6 +301,7 @@ function verifyAccessCode(){
   return false;
  }
  if(err) err.style.display='none';
+ sessionStorage.setItem(ACCESS_CODE_KEY, normalize(val));
  grantGameAccess();
  setRoute('/hra/app');
  renderGameApp();
@@ -245,7 +332,7 @@ Za děti účastnící se hry odpovídá jejich dospělý doprovod.
 Pokud se zaseknete, použijte nápovědu. Pokud nastane technický problém nebo budete potřebovat pomoc, použijte tlačítko SOS.
 
 Přejeme vám šťastnou cestu po Grollových stopách.`;}
-function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const s=defaultState(team); s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
+function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const s=defaultState(team); s.accessCode=sessionStorage.getItem(ACCESS_CODE_KEY)||''; s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
 function continueWithoutLocation(){ window._gpsOk=false; alert('Hru můžete hrát i bez sdílení polohy. Navigace z aplikace a odeslání vaší polohy přes SOS ale nebudou fungovat.'); }
 function requestPosBeforeStart(){ if(!navigator.geolocation) return toast('Poloha není v tomto prohlížeči dostupná.'); navigator.geolocation.getCurrentPosition(pos=>{ window._gpsOk=true; window._lastPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy}; toast('Poloha povolena.'); },()=>toast('Poloha nebyla povolena nebo se ji nepodařilo načíst.'),{enableHighAccuracy:true,timeout:8000}); }
 function renderStation(){ const s=getState(); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${st.id}/${DATA.stations.length} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:DATA.stations.length,size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); }
@@ -777,6 +864,64 @@ function adminLogHtml(rows){
  if(!rows.length) return '<h3>Log událostí</h3><p class="small muted">Zatím nejsou zaznamenané žádné události.</p>';
  return `<h3>Log událostí</h3><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Detail</th></tr>${rows.slice(-80).reverse().map(r=>`<tr><td>${adminDate(r.time)}</td><td>${escapeHtml(adminEventName(r))}</td><td>${adminEventDetail(r)}</td></tr>`).join('')}</table>`;
 }
+function safeJson(value, fallback){
+ if(!value) return fallback;
+ if(typeof value !== 'string') return value;
+ try{ return JSON.parse(value); }catch(e){ return fallback; }
+}
+function onlineTeamSummary(team){
+ const hints=safeJson(team.hints, team.hints || {});
+ const solutions=safeJson(team.solutions, team.solutions || {});
+ const completed=safeJson(team.completed, team.completed || []);
+ const lastPos=safeJson(team.lastPos, team.lastPos || null);
+ const hintTotal=Object.values(hints || {}).reduce((sum,n)=>sum+(Number(n)||0),0);
+ const solutionTotal=Object.values(solutions || {}).filter(Boolean).length;
+ const currentId=Number(team.currentStation || 1);
+ const st=station(currentId);
+ const pos=lastPos?.lat
+  ? `<a href="https://maps.google.com/?q=${lastPos.lat},${lastPos.lng}" target="_blank" rel="noopener">${Number(lastPos.lat).toFixed(6)}, ${Number(lastPos.lng).toFixed(6)}</a>`
+  : 'není dostupná';
+ return `<div class="admin-subcard">
+  <h4>${escapeHtml(team.team || 'Bez názvu')}</h4>
+  <p><b>Přístupový kód:</b> ${escapeHtml(team.accessCode || '—')}<br>
+  <b>Aktuální zastávka:</b> ${currentId}/13 – ${escapeHtml(team.stationTitle || st?.title || '—')}<br>
+  <b>Dokončené zastávky:</b> ${Array.isArray(completed) ? completed.length : 0}<br>
+  <b>Nápovědy celkem:</b> ${hintTotal}<br>
+  <b>Řešení celkem:</b> ${solutionTotal}<br>
+  <b>Poslední GPS:</b> ${pos}<br>
+  <b>Poslední aktualizace:</b> ${adminDate(team.updatedAt)}</p>
+ </div>`;
+}
+function onlineEventsHtml(events){
+ if(!events?.length) return '<p class="small muted">Zatím nejsou online události.</p>';
+ const rows=events.slice(-80).reverse().map(e=>{
+  const detail=safeJson(e.detail, {});
+  const type=detail.type || e.type || 'Událost';
+  const stationNo=detail.station || e.station || '';
+  return `<tr><td>${adminDate(e.time)}</td><td>${escapeHtml(e.team || detail.team || '—')}</td><td>${escapeHtml(adminEventName({type, hint:detail.hint}))}</td><td>${stationNo ? adminStationLabel(stationNo) : '—'}</td></tr>`;
+ }).join('');
+ return `<div style="overflow:auto"><table class="admin-table"><tr><th>Čas</th><th>Tým</th><th>Událost</th><th>Zastávka</th></tr>${rows}</table></div>`;
+}
+async function loadOnlineAdmin(){
+ const panel=$('#onlineAdminPanel');
+ if(!panel) return;
+ if(!monitorEndpoint()){
+  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Online monitoring zatím není nastavený. Aby admin viděl všechny týmy ze všech zařízení, je potřeba doplnit URL Google Apps Scriptu do gameMonitorEndpoint v game-data.js.</p>';
+  return;
+ }
+ panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p>';
+ try{
+  const data=await loadJsonp(monitorUrl('admin'));
+  const teams=Array.isArray(data?.teams) ? data.teams : [];
+  const events=Array.isArray(data?.events) ? data.events : [];
+  const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
+  panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí</h3>${onlineEventsHtml(events)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
+ }catch(e){
+  console.error(e);
+  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Online přehled se nepodařilo načíst. Zkontrolujte prosím nastavení gameMonitorEndpoint a nasazení Google Apps Scriptu.</p>';
+ }
+}
+window.loadOnlineAdmin = loadOnlineAdmin;
 
 function adminLogin(event){
  if(event) event.preventDefault();
@@ -795,51 +940,38 @@ function adminLogin(event){
   const rows=adminLog();
   modal(`<h2>Admin panel</h2>
    <div class="grid two admin-actions">
-    <button class="btn secondary" onclick="adminJump()">Přeskočit zastávku</button>
-    <button class="btn secondary" onclick="adminUnlockNext()">Odemknout další</button>
-    <button class="btn danger" onclick="resetGame()">Reset hry</button>
+    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
+    <button class="btn secondary" onclick="adminPreviewStation()">Náhled zastávky</button>
    </div>
+   <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>
    ${adminTeamCard(s, rows)}
    <div class="admin-card">${adminWrongHtml(s, rows)}</div>
    <div class="admin-card">${adminHintsSummary(s)}</div>
    <div class="admin-card">${adminLogHtml(rows)}</div>
    <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`);
+  loadOnlineAdmin();
  }catch(e){
   console.error(e);
   const error=$('#adminLoginError');
   if(error){ error.textContent='Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.'; error.style.display='block'; }
-  modal(`<h2>Admin panel</h2><p>Heslo bylo přijato, ale detailní přehled se nepodařilo sestavit. Základní admin akce jsou dostupné níže.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminJump()">Přeskočit zastávku</button><button class="btn secondary" onclick="adminUnlockNext()">Odemknout další</button><button class="btn danger" onclick="resetGame()">Reset hry</button><button class="btn ghost" onclick="exportData()">Stáhnout technická data</button></div>`, true);
+  modal(`<h2>Admin panel</h2><p>Heslo bylo přijato, ale detailní přehled se nepodařilo sestavit.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button><button class="btn secondary" onclick="adminPreviewStation()">Náhled zastávky</button><button class="btn ghost" onclick="exportData()">Stáhnout technická data</button></div><div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>`, true);
+  loadOnlineAdmin();
  }
  return false;
 }
 window.adminLogin = adminLogin;
-function adminJump(){
+function adminPreviewStation(){
  const n=prompt('Číslo zastávky 1–13:');
  if(n===null) return;
  const id=clamp(parseInt(n,10)||1,1,13);
- const s=getState()||defaultState('Test');
- s.currentStation=id;
- s.unlocked=Math.max(s.unlocked||1,id);
- s[`gpsOk${id}`]=true;
- s.finished=false;
- saveState(s);
- grantGameAccess();
- addLog('admin_jump',{to:id});
- closeModal();
- returnToGame();
+ const st=station(id);
+ modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="closeModal()">Zpět</button>`, false);
 }
+window.adminPreviewStation = adminPreviewStation;
+function adminJump(){ adminPreviewStation(); }
 function adminUnlockNext(){
- const s=getState();
- if(!s) return;
- s.currentStation=clamp(s.currentStation+1,1,13);
- s.unlocked=Math.max(s.unlocked,s.currentStation);
- s[`gpsOk${s.currentStation}`]=true;
- s.finished=false;
- saveState(s);
- grantGameAccess();
- addLog('admin_unlock_next');
- closeModal();
- returnToGame();
+ toast('Admin náhled už nemění rozehranou hru týmu.');
+ adminPreviewStation();
 }
 function resetGame(){ if(confirm('Opravdu resetovat lokální hru?')){ localStorage.removeItem(LS_KEY); localStorage.removeItem(ADMIN_KEY); closeModal(); renderStart(); } }
 function leaderboardKey(){ return 'grollLeaderboard.v1'; }
@@ -891,18 +1023,12 @@ async function addLeaderboardOnce(){
  saveLocalLeaderboard(entry);
  const url=leaderboardUrl('add', entry);
  if(!url) return;
- try{
-  await fetch(url, {cache:'no-store'});
- }catch(e){
-  console.warn('Online leaderboard submit failed', e);
- }
+ fireAndForget(url);
 }
 async function fetchOnlineLeaderboard(){
  const url=leaderboardUrl('list');
  if(!url) return null;
- const resp=await fetch(url, {cache:'no-store'});
- if(!resp.ok) throw new Error('Leaderboard response failed');
- const data=await resp.json();
+ const data=await loadJsonp(url);
  return Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : []);
 }
 async function openLeaderboard(){
