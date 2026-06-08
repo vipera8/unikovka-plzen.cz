@@ -961,7 +961,8 @@ async function loadOnlineAdmin(){
  }
  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p>';
  try{
-  const data=await loadJsonp(monitorUrl('admin'));
+  const data=await loadJsonp(monitorUrl('admin', {adminPassword: window._adminPass || ''}));
+  if(data?.error === 'unauthorized') throw new Error('Unauthorized admin monitor');
   const teams=Array.isArray(data?.teams) ? data.teams : [];
   const events=Array.isArray(data?.events) ? data.events : [];
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
@@ -986,6 +987,7 @@ function adminLogin(event){
    if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
    return toast('Špatné heslo.');
   }
+  if(pass) window._adminPass=pass;
   openAdminPanel();
  }catch(e){
   console.error(e);

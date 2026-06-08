@@ -1,7 +1,7 @@
 ﻿window.GAME_DATA = {
   "adminPassword": "Groll1813",
-  "leaderboardEndpoint": "",
-  "gameMonitorEndpoint": "",
+  "leaderboardEndpoint": "https://script.google.com/macros/s/AKfycbxEr_pYTUDGvoSDkzZbdpO7DdEONm_wVzso4as7V8mYMFyoO0WX7clH0v4XVlCfB8pj/exec",
+  "gameMonitorEndpoint": "https://script.google.com/macros/s/AKfycbxEr_pYTUDGvoSDkzZbdpO7DdEONm_wVzso4as7V8mYMFyoO0WX7clH0v4XVlCfB8pj/exec",
   "gpsMode": "warn",
   "gpsRadiusMeters": 150,
   "phone": "+420737256827",

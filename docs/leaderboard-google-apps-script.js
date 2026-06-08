@@ -1,13 +1,19 @@
 const LEADERBOARD_SHEET = 'Leaderboard';
 const TEAMS_SHEET = 'Teams';
 const EVENTS_SHEET = 'Events';
+const ADMIN_PASSWORD = 'Groll1813';
 
 function doGet(e) {
   const action = String(e.parameter.action || 'list');
 
   if (action === 'state') return saveTeamState_(e);
   if (action === 'event') return saveEvent_(e);
-  if (action === 'admin') return json_(adminData_(), e);
+  if (action === 'admin') {
+    if (String(e.parameter.adminPassword || '') !== ADMIN_PASSWORD) {
+      return json_({ ok: false, error: 'unauthorized', teams: [], events: [] }, e);
+    }
+    return json_(adminData_(), e);
+  }
   if (action === 'add') return addLeaderboard_(e);
 
   return json_({ rows: leaderboardRows_() }, e);
