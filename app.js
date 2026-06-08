@@ -881,23 +881,32 @@ function adminStationSelect(){
 function adminPanelHtml(){
  const s=getState();
  const rows=adminLog();
+ const safeCard=(title, fn)=>{
+  try{ return fn(); }
+  catch(e){ console.error('Admin section failed:', title, e); return `<div class="admin-card"><h3>${escapeHtml(title)}</h3><p class="small muted">Tuto část se nepodařilo načíst.</p></div>`; }
+ };
  return `<h2>Admin panel</h2>
   <div class="grid two admin-actions">
-   <button class="btn secondary" onclick="adminLogin()">Obnovit místní údaje</button>
+   <button class="btn secondary" onclick="openAdminPanel()">Obnovit místní údaje</button>
    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
   </div>
-  ${adminTeamCard(s, rows)}
-  <div class="admin-card">${adminWrongHtml(s, rows)}</div>
-  <div class="admin-card">${adminHintsSummary(s)}</div>
-  <div class="admin-card">${adminLogHtml(rows)}</div>
-  ${adminStationSelect()}
+  ${safeCard('Aktuální tým', ()=>adminTeamCard(s, rows))}
+  ${safeCard('Chybné app-kódy', ()=>`<div class="admin-card">${adminWrongHtml(s, rows)}</div>`)}
+  ${safeCard('Použité nápovědy', ()=>`<div class="admin-card">${adminHintsSummary(s)}</div>`)}
+  ${safeCard('Log událostí', ()=>`<div class="admin-card">${adminLogHtml(rows)}</div>`)}
+  ${safeCard('Náhled zastávek', ()=>adminStationSelect())}
   <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>
   <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`;
 }
 function openAdminPanel(){
  window._adminOk=true;
- modal(adminPanelHtml());
- loadOnlineAdmin();
+ try{
+  modal(adminPanelHtml());
+  loadOnlineAdmin();
+ }catch(e){
+  console.error(e);
+  modal(`<h2>Admin panel</h2><p>Admin panel se nepodařilo celý sestavit.</p>${adminStationSelect()}<button class="btn ghost" onclick="exportData()">Stáhnout technická data</button>`, true);
+ }
 }
 function safeJson(value, fallback){
  if(!value) return fallback;
@@ -995,10 +1004,38 @@ function adminPreviewStation(id=null){
  const hints = (st.hints || []).map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
  const solution = st.solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${ptxt(st.solution)}</div></div>` : '';
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
- modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+ modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
 window.adminPreviewStation = adminPreviewStation;
 window.openAdminPanel = openAdminPanel;
+function adminPreviewWrongCode(id){
+ const st=station(id);
+ const msg=DATA.wrongMessages?.[0] || 'Kód nesedí. Zkuste to znovu.';
+ modal(`<h2>Test špatného kódu</h2><p class="small muted">Simulace pro admina, nemění hru týmu.</p><div class="card error"><p><b>Zastávka:</b> ${id}/13 – ${escapeHtml(st.title)}</p><p>${escapeHtml(msg)}</p></div><button class="btn ghost" onclick="adminPreviewStation(${id})">Zpět na zastávku</button>`, false);
+}
+function adminPreviewCorrectCode(id){
+ const isFinal=id>=DATA.stations.length;
+ const next=isFinal ? null : station(id+1);
+ const successText=DATA.successMessages?.[0] || 'Výborně!';
+ const beer=BeerProgress({completedStops:id,totalStops:DATA.stations.length,size:'large',animated:true,fromStops:Math.max(0,id-1)});
+ if(isFinal){
+  modal(`<div class="success-card"><h2>${escapeHtml(successText)}</h2><p>Poslední zámek povolil. Půllitr je plný.</p><div class="success-progress">${beer}</div><button class="btn" onclick="adminPreviewCertificate()">Zobrazit certifikát</button><button class="btn ghost" style="margin-top:10px" onclick="adminPreviewStation(${id})">Zpět na zastávku</button></div>`, false);
+  return;
+ }
+ modal(`<div class="success-card"><h2>${escapeHtml(successText)}</h2><p>Výborně! Vaše další zastávka je:</p><h3>${escapeHtml(next.title)}</h3><div class="success-progress">${beer}</div><a class="btn" href="${mapsUrl(next)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Navigovat</a><button class="btn secondary" onclick="adminPreviewStation(${id+1})" style="margin-top:10px">Pokračovat na další zastávku</button><button class="btn ghost" onclick="adminPreviewStation(${id})" style="margin-top:10px">Zpět na zastávku</button></div>`, false);
+}
+function adminPreviewBeer(id){
+ const beer=BeerProgress({completedStops:id,totalStops:DATA.stations.length,size:'large',animated:true,fromStops:Math.max(0,id-1)});
+ modal(`<div class="success-card"><h2>Test animace půllitru</h2><p class="small muted">Simulace pro admina, nemění hru týmu.</p><div class="success-progress">${beer}</div><button class="btn ghost" onclick="adminPreviewStation(${id})">Zpět na zastávku</button></div>`, false);
+}
+function adminPreviewCertificate(){
+ const data={team:'Testovací tým', time:'3:12:45', hints:4, solutions:1};
+ modal(`<h2>Test certifikátu</h2><p class="small muted">Náhled pro admina, nemění hru týmu.</p><div class="cert-wrap cert-wrap-template"><section class="cert-fixed-template" aria-label="Certifikát sládkovské odvahy"><img class="cert-fixed-bg" src="assets/images/certifikat-bez-titulu.jpg" alt="Certifikát sládkovské odvahy"><div id="field-team" class="cert-field cert-field-team" style="${certFieldStyle('team')}">${escapeHtml(data.team)}</div><div id="field-time" class="cert-field cert-field-time" style="${certFieldStyle('time')}">${escapeHtml(data.time)}</div><div id="field-hints" class="cert-field cert-field-hints" style="${certFieldStyle('hints')}">${escapeHtml(String(data.hints))}</div><div id="field-solutions" class="cert-field cert-field-solutions" style="${certFieldStyle('solutions')}">${escapeHtml(String(data.solutions))}</div></section></div><button class="btn ghost" style="margin-top:14px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+}
+window.adminPreviewWrongCode = adminPreviewWrongCode;
+window.adminPreviewCorrectCode = adminPreviewCorrectCode;
+window.adminPreviewBeer = adminPreviewBeer;
+window.adminPreviewCertificate = adminPreviewCertificate;
 function adminJump(){ adminPreviewStation(); }
 function adminUnlockNext(){
  toast('Admin náhled už nemění rozehranou hru týmu.');
