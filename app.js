@@ -672,14 +672,20 @@ const CERT_FIELDS = {
   hints:     { x: 568, y: 1114, w:  95, h: 48,  font: 24, align: 'left' },
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
+const CERT_DISPLAY_FIELDS = {
+  team: { x: 235, y: 611, w: 470, h: 74, font: 24, align: 'center' }
+};
 const CERT_DOWNLOAD_OFFSET = {
   time: 2,
   hints: 2,
   solutions: 2
 };
+const CERT_DOWNLOAD_X_OFFSET = {
+  time: 6
+};
 
 function certFieldStyle(fieldName){
-  const f = CERT_FIELDS[fieldName];
+  const f = CERT_DISPLAY_FIELDS[fieldName] || CERT_FIELDS[fieldName];
   const W = CERT_TEMPLATE_SIZE.width;
   const H = CERT_TEMPLATE_SIZE.height;
   const left = (f.x / W * 100).toFixed(4);
@@ -1189,7 +1195,7 @@ async function createCertificateBlob(){
   const size=name==='team' ? fitCanvasFont(ctx, weight, f.font, 22, text, f.w) : f.font;
   ctx.font=`${weight} ${size}px Georgia, "Times New Roman", serif`;
   ctx.textAlign=f.align || 'left';
-  const x=f.align==='center' ? f.x + f.w / 2 : f.x;
+  const x=(f.align==='center' ? f.x + f.w / 2 : f.x) + (CERT_DOWNLOAD_X_OFFSET[name] || 0);
   ctx.fillText(String(text ?? ''), x, centerY);
  };
  drawField('team', data.team);

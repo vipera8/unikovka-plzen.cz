@@ -1292,7 +1292,7 @@
   justify-content:center;
   white-space:normal;
   letter-spacing:.02em;
-  line-height:1.12;
+  line-height:1.02;
   align-items:center;
   text-wrap:balance;
   overflow-wrap:anywhere;
@@ -1482,4 +1482,12 @@
 }
 .compass-art img{
   max-width:min(100%,330px)!important;
+}
+
+/* v100 stronger fade only for gift voucher image */
+.voucher-art .voucher-illustration{
+  border-radius:0!important;
+  filter:drop-shadow(0 16px 38px rgba(0,0,0,.28))!important;
+  -webkit-mask-image:radial-gradient(ellipse at 55% 50%, rgba(0,0,0,1) 18%, rgba(0,0,0,.92) 36%, rgba(0,0,0,.62) 55%, rgba(0,0,0,.28) 72%, rgba(0,0,0,.08) 86%, rgba(0,0,0,0) 100%)!important;
+  mask-image:radial-gradient(ellipse at 55% 50%, rgba(0,0,0,1) 18%, rgba(0,0,0,.92) 36%, rgba(0,0,0,.62) 55%, rgba(0,0,0,.28) 72%, rgba(0,0,0,.08) 86%, rgba(0,0,0,0) 100%)!important;
 }
