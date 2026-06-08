@@ -188,6 +188,17 @@ function returnToGame(){
 function goRoute(path){ setRoute(path); render(); window.scrollTo({top:0,behavior:'smooth'}); }
 window.addEventListener('popstate', render);
 window.addEventListener('hashchange', render);
+window.addEventListener('storage', e=>{
+ if((e.key===LS_KEY || e.key===ADMIN_KEY) && $('#onlineAdminPanel')){
+  try{
+   const modalEl=$('.modal');
+   if(modalEl){
+    modalEl.innerHTML=adminPanelHtml() + '<button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>';
+    loadOnlineAdmin();
+   }
+  }catch(err){ console.warn('Admin refresh failed', err); }
+ }
+});
 const ACCESS_KEY='grollovaCestaAccess.v1';
 function hasGameAccess(){ return localStorage.getItem(ACCESS_KEY)==='ok'; }
 function validAccessCode(code){ const list=(DATA.webAccessCodes||['TEST']).map(normalize); return list.includes(normalize(code)); }
@@ -864,6 +875,30 @@ function adminLogHtml(rows){
  if(!rows.length) return '<h3>Log událostí</h3><p class="small muted">Zatím nejsou zaznamenané žádné události.</p>';
  return `<h3>Log událostí</h3><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Detail</th></tr>${rows.slice(-80).reverse().map(r=>`<tr><td>${adminDate(r.time)}</td><td>${escapeHtml(adminEventName(r))}</td><td>${adminEventDetail(r)}</td></tr>`).join('')}</table>`;
 }
+function adminStationSelect(){
+ return `<div class="admin-card"><h3>Náhled zastávek</h3><p class="small muted">Otevře obsah tak, jak ho vidí hráči, ale nezmění rozehranou hru.</p><div class="grid two">${DATA.stations.map(st=>`<button class="btn secondary" onclick="adminPreviewStation(${st.id})">${st.id}/13 ${escapeHtml(st.title)}</button>`).join('')}</div></div>`;
+}
+function adminPanelHtml(){
+ const s=getState();
+ const rows=adminLog();
+ return `<h2>Admin panel</h2>
+  <div class="grid two admin-actions">
+   <button class="btn secondary" onclick="adminLogin()">Obnovit místní údaje</button>
+   <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
+  </div>
+  ${adminTeamCard(s, rows)}
+  <div class="admin-card">${adminWrongHtml(s, rows)}</div>
+  <div class="admin-card">${adminHintsSummary(s)}</div>
+  <div class="admin-card">${adminLogHtml(rows)}</div>
+  ${adminStationSelect()}
+  <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>
+  <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`;
+}
+function openAdminPanel(){
+ window._adminOk=true;
+ modal(adminPanelHtml());
+ loadOnlineAdmin();
+}
 function safeJson(value, fallback){
  if(!value) return fallback;
  if(typeof value !== 'string') return value;
@@ -931,43 +966,39 @@ function adminLogin(event){
   const pass = (input?.value || '').trim();
   const adminPassword = String(window.GAME_DATA?.adminPassword || 'Groll1813').trim();
   if(error){ error.style.display='none'; error.textContent=''; }
-  if(pass!==adminPassword){
+  if(!window._adminOk && pass!==adminPassword){
    if(error){ error.textContent='Špatné heslo.'; error.style.display='block'; }
    if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
    return toast('Špatné heslo.');
   }
-  const s=getState();
-  const rows=adminLog();
-  modal(`<h2>Admin panel</h2>
-   <div class="grid two admin-actions">
-    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
-    <button class="btn secondary" onclick="adminPreviewStation()">Náhled zastávky</button>
-   </div>
-   <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>
-   ${adminTeamCard(s, rows)}
-   <div class="admin-card">${adminWrongHtml(s, rows)}</div>
-   <div class="admin-card">${adminHintsSummary(s)}</div>
-   <div class="admin-card">${adminLogHtml(rows)}</div>
-   <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`);
-  loadOnlineAdmin();
+  openAdminPanel();
  }catch(e){
   console.error(e);
   const error=$('#adminLoginError');
   if(error){ error.textContent='Admin panel se nepodařilo otevřít. Zkuste obnovit stránku.'; error.style.display='block'; }
-  modal(`<h2>Admin panel</h2><p>Heslo bylo přijato, ale detailní přehled se nepodařilo sestavit.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button><button class="btn secondary" onclick="adminPreviewStation()">Náhled zastávky</button><button class="btn ghost" onclick="exportData()">Stáhnout technická data</button></div><div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>`, true);
+  modal(`<h2>Admin panel</h2><p>Heslo bylo přijato, ale detailní přehled se nepodařilo sestavit.</p>${adminStationSelect()}<div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div><button class="btn ghost" onclick="exportData()">Stáhnout technická data</button>`, true);
   loadOnlineAdmin();
  }
  return false;
 }
 window.adminLogin = adminLogin;
-function adminPreviewStation(){
- const n=prompt('Číslo zastávky 1–13:');
- if(n===null) return;
- const id=clamp(parseInt(n,10)||1,1,13);
+function adminPreviewStation(id=null){
+ if(id===null){
+  const n=prompt('Číslo zastávky 1–13:');
+  if(n===null) return;
+  id=n;
+ }
+ id=clamp(parseInt(id,10)||1,1,13);
  const st=station(id);
- modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="closeModal()">Zpět</button>`, false);
+ let intro = st.intro || '';
+ if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
+ const hints = (st.hints || []).map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
+ const solution = st.solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${ptxt(st.solution)}</div></div>` : '';
+ const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
+ modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
 window.adminPreviewStation = adminPreviewStation;
+window.openAdminPanel = openAdminPanel;
 function adminJump(){ adminPreviewStation(); }
 function adminUnlockNext(){
  toast('Admin náhled už nemění rozehranou hru týmu.');
