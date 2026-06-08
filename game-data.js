@@ -370,6 +370,7 @@
   ],
   "webAccessCodes": [
     "TEST",
+    "TEST2",
     "GROLL2026",
     "GROLLOVA",
     "ZLATASTOPA"

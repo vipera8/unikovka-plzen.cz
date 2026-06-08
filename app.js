@@ -12,8 +12,10 @@ const readJson = (key, fallback) => {
  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
  catch(e){ localStorage.removeItem(key); return fallback; }
 };
-const getState = () => readJson(LS_KEY, null);
-const saveState = s => { localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
+function activeAccessCode(){ return sessionStorage.getItem(ACCESS_CODE_KEY) || localStorage.getItem(ACCESS_CODE_KEY) || ''; }
+function stateKeyForCode(code){ return code ? `${LS_KEY}.${normalize(code)}` : LS_KEY; }
+const getState = () => activeAccessCode() ? readJson(stateKeyForCode(activeAccessCode()), null) : readJson(LS_KEY, null);
+const saveState = s => { const key=stateKeyForCode(s?.accessCode || activeAccessCode()); localStorage.setItem(key, JSON.stringify(s)); localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
 const adminLog = () => readJson(ADMIN_KEY, []);
 const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s); };
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
@@ -101,12 +103,46 @@ function loadJsonp(url){
   window[cb]=data=>{ clearTimeout(timer); cleanup(); resolve(data); };
   script.onerror=()=>{ clearTimeout(timer); cleanup(); reject(new Error('JSONP failed')); };
   script.src=full.toString();
-  document.head.appendChild(script);
+ document.head.appendChild(script);
  });
+}
+function stateFromOnlineRow(row){
+ if(!row?.id) return null;
+ return {
+  id:String(row.id),
+  team:String(row.team || ''),
+  accessCode:normalize(row.accessCode || ''),
+  startTime:Number(row.startTime || now()),
+  currentStation:clamp(Number(row.currentStation || 1),1,DATA.stations.length),
+  unlocked:clamp(Number(row.currentStation || 1),1,DATA.stations.length),
+  completed:safeJson(row.completed, []),
+  wrong:safeJson(row.wrong, {}),
+  wrongTotal:Number(row.wrongTotal || 0),
+  hints:safeJson(row.hints, {}),
+  solutions:safeJson(row.solutions, {}),
+  diaryUnlocked:true,
+  gpsConsent:!!row.lastPos,
+  gpsBypass:[],
+  lastPos:safeJson(row.lastPos, null),
+  finished:String(row.finished || '0') === '1' || row.finished === true,
+  finishTime:row.finishTime ? Number(row.finishTime) || null : null,
+  offlineReady:false
+ };
+}
+async function restoreOnlineStateByCode(code){
+ const url=monitorUrl('restore', {accessCode:normalize(code)});
+ if(!url) return null;
+ try{
+  const data=await loadJsonp(url);
+  return stateFromOnlineRow(data?.team);
+ }catch(e){
+  console.warn('Online restore failed', e);
+  return null;
+ }
 }
 function defaultState(team){ return { id: globalThis.crypto?.randomUUID?.() || ('team-'+Date.now()), team, startTime: now(), currentStation:1, unlocked:1, completed:[], wrong:{}, wrongTotal:0, hints:{}, solutions:{}, diaryUnlocked:false, gpsConsent:false, gpsBypass:[], lastPos:null, finished:false, finishTime:null, offlineReady:false }; }
 function shell(inner){ return `<main class="phone"><header class="topbar"><div class="brand"><b>Grollova cesta</b><span>${getState()?.team ? escapeHtml(getState().team)+' · ' : ''}<span class="timer" id="timer">0:00:00</span></span></div><button class="icon-btn" onclick="openMenu()">☰</button></header><section class="content">${inner}</section></main>`; }
-function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 function escapeAttr(s){return escapeHtml(String(s||''));}
 function applyCzechTypography(root=document.body){
  const skipTags=new Set(['SCRIPT','STYLE','TEXTAREA','INPUT','SELECT','OPTION']);
@@ -301,7 +337,7 @@ function renderAccessGate(){
   if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); verifyAccessCode(); }});
  },50);
 }
-function verifyAccessCode(){
+async function verifyAccessCode(){
  const input=$('#accessCode');
  const err=$('#accessError');
  const val=input?.value || '';
@@ -312,8 +348,15 @@ function verifyAccessCode(){
   return false;
  }
  if(err) err.style.display='none';
- sessionStorage.setItem(ACCESS_CODE_KEY, normalize(val));
+ const code=normalize(val);
+ sessionStorage.setItem(ACCESS_CODE_KEY, code);
+ localStorage.setItem(ACCESS_CODE_KEY, code);
  grantGameAccess();
+ if(!getState()){
+  toast('Kontroluji uložený průběh hry...');
+  const restored=await restoreOnlineStateByCode(code);
+  if(restored) saveState(restored);
+ }
  setRoute('/hra/app');
  renderGameApp();
  return true;
@@ -673,15 +716,15 @@ const CERT_FIELDS = {
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
 const CERT_DISPLAY_FIELDS = {
-  team: { x: 235, y: 611, w: 470, h: 74, font: 24, align: 'center' }
+  team: { x: 225, y: 628, w: 490, h: 74, font: 23, align: 'center' }
 };
 const CERT_DOWNLOAD_OFFSET = {
-  time: 2,
+  time: 5,
   hints: 2,
-  solutions: 2
+  solutions: 5
 };
 const CERT_DOWNLOAD_X_OFFSET = {
-  time: 6
+  time: 9
 };
 
 function certFieldStyle(fieldName){
@@ -1049,7 +1092,7 @@ function adminUnlockNext(){
  toast('Admin náhled už nemění rozehranou hru týmu.');
  adminPreviewStation();
 }
-function resetGame(){ if(confirm('Opravdu resetovat lokální hru?')){ localStorage.removeItem(LS_KEY); localStorage.removeItem(ADMIN_KEY); closeModal(); renderStart(); } }
+function resetGame(){ if(confirm('Opravdu resetovat lokální hru pro aktuální přístupový kód?')){ localStorage.removeItem(stateKeyForCode(activeAccessCode())); localStorage.removeItem(LS_KEY); localStorage.removeItem(ADMIN_KEY); closeModal(); renderStart(); } }
 function leaderboardKey(){ return 'grollLeaderboard.v1'; }
 function leaderboardEndpoint(){ return String(window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
 function buildLeaderboardEntry(){

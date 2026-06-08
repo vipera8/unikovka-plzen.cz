@@ -8,6 +8,7 @@ function doGet(e) {
 
   if (action === 'state') return saveTeamState_(e);
   if (action === 'event') return saveEvent_(e);
+  if (action === 'restore') return json_({ team: restoreTeam_(e) }, e);
   if (action === 'admin') {
     if (String(e.parameter.adminPassword || '') !== ADMIN_PASSWORD) {
       return json_({ ok: false, error: 'unauthorized', teams: [], events: [] }, e);
@@ -96,6 +97,15 @@ function adminData_() {
     events: sheetRows_(EVENTS_SHEET).slice(-200),
     leaderboard: leaderboardRows_()
   };
+}
+
+function restoreTeam_(e) {
+  const accessCode = String(e.parameter.accessCode || '').toUpperCase();
+  if (!accessCode) return null;
+  const rows = sheetRows_(TEAMS_SHEET)
+    .filter(row => String(row.accessCode || '').toUpperCase() === accessCode)
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  return rows[0] || null;
 }
 
 function leaderboardRows_() {
