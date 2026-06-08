@@ -1292,8 +1292,10 @@
   justify-content:center;
   white-space:normal;
   letter-spacing:.02em;
-  line-height:1.06;
+  line-height:1.12;
   align-items:center;
+  text-wrap:balance;
+  overflow-wrap:anywhere;
 }
 #field-time,
 #field-hints,

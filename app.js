@@ -569,15 +569,15 @@ function renderFinish(){
 const CERT_DEBUG = false;
 const CERT_TEMPLATE_SIZE = { width: 941, height: 1672 };
 const CERT_FIELDS = {
-  team:      { x: 255, y: 643,  w: 420, h: 76,  font: 34, align: 'center' },
+  team:      { x: 210, y: 630,  w: 520, h: 92,  font: 30, align: 'center' },
   time:      { x: 449, y: 1025, w: 205, h: 48,  font: 24, align: 'left' },
   hints:     { x: 568, y: 1114, w:  95, h: 48,  font: 24, align: 'left' },
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
 const CERT_DOWNLOAD_OFFSET = {
-  time: 11,
-  hints: 11,
-  solutions: 11
+  time: -6,
+  hints: -6,
+  solutions: -6
 };
 
 function certFieldStyle(fieldName){
