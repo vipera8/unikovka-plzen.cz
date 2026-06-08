@@ -662,9 +662,9 @@ const CERT_FIELDS = {
   solutions: { x: 550, y: 1196, w:  95, h: 48,  font: 24, align: 'left' }
 };
 const CERT_DOWNLOAD_OFFSET = {
-  time: -6,
-  hints: -6,
-  solutions: -6
+  time: 2,
+  hints: 2,
+  solutions: 2
 };
 
 function certFieldStyle(fieldName){
