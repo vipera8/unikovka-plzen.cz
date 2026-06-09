@@ -60,6 +60,8 @@
 
 .hint-image-wrap-transparent{background:transparent;border:none;box-shadow:none}
 .hint-image-transparent-bg{background:transparent}
+.solution-image-wrap{background:var(--paper);padding:8px}
+.solution-image{max-width:760px;margin:0 auto}
 
 .text-para{margin:0 0 0.85em 0;line-height:1.58}
 .text-para:last-child{margin-bottom:0}

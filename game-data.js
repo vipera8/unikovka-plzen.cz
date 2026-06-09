@@ -152,7 +152,11 @@
           "textAfter": "Správně natočený trojúhelník míří svými cípy na stejné symboly, které v tomto směru vidíte na synagoze.\n\nTři správné trojúhelníky míří nahoru, tři dolů."
         }
       ],
-      "solution": "Doplnit fotky správně otočených trojúhelníků\nPo správném výběru a natočení trojúhelníků se v jejich středu objeví kód 352.",
+      "solution": {
+        "image": "06_velka_synagoga_reseni_trojuhelniky.png",
+        "alt": "Správně vybrané a natočené trojúhelníky",
+        "textAfter": "Po správném výběru a natočení trojúhelníků se v jejich středu objeví kód 352."
+      },
       "image": "06_Groll_velka_synagoga.jpg",
       "introAudio": "06_Velka_Synagoga_audio_Groll_uvod_1.mp3"
     },

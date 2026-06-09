@@ -447,6 +447,16 @@ function renderHintContent(hint){
  const after = hint.textAfter ? `<div>${ptxt(hint.textAfter)}</div>` : '';
  return `${before}${image}${after}`;
 }
+function renderSolutionContent(solution){
+ if(typeof solution === 'string') return ptxt(solution);
+ if(!solution || typeof solution !== 'object') return '';
+ const before = solution.textBefore ? `<div>${ptxt(solution.textBefore)}</div>` : '';
+ const image = solution.image
+  ? `<figure class="hint-image-wrap solution-image-wrap"><img class="hint-image solution-image" src="assets/images/${encodeURI(solution.image)}" alt="${escapeAttr(solution.alt || 'Řešení')}" loading="lazy" onerror="this.closest('.hint-image-wrap').style.display='none'"></figure>`
+  : '';
+ const after = solution.textAfter ? `<div>${ptxt(solution.textAfter)}</div>` : '';
+ return `${before}${image}${after}`;
+}
 
 function renderHints(st, hintState){
  let html='';
@@ -460,7 +470,7 @@ function renderHints(st, hintState){
  }
  // Řešení se zobrazí až po otevření poslední nápovědy. Předchozí nápovědy zůstávají dostupné.
  if(hintState>=st.hints.length){
-  html+=`<div class="accordion ${openedSolution?'open':''}"><button class="acc-head" onclick="openSolution(${st.id}, this)">Řešení <span>⌄</span></button><div class="acc-body">${ptxt(st.solution)}</div></div>`;
+  html+=`<div class="accordion ${openedSolution?'open':''}"><button class="acc-head" onclick="openSolution(${st.id}, this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(st.solution)}</div></div>`;
  }
  return html;
 }
@@ -974,7 +984,6 @@ function adminPanelHtml(){
    <button class="btn secondary" onclick="openAdminPanel()">Obnovit místní údaje</button>
    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
   </div>
-  ${safeCard('Log událostí', ()=>`<div class="admin-card">${adminLogHtml(rows)}</div>`)}
   ${safeCard('Náhled zastávek', ()=>adminStationSelect())}
   <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>
   <button class="btn ghost admin-export" onclick="exportData()">Stáhnout technická data</button>`;
@@ -1017,15 +1026,34 @@ function onlineTeamSummary(team){
   <b>Poslední aktualizace:</b> ${adminDate(team.updatedAt)}</p>
  </div>`;
 }
-function onlineEventsHtml(events){
- if(!events?.length) return '<p class="small muted">Zatím nejsou online události.</p>';
- const rows=events.slice(-80).reverse().map(e=>{
+function onlineEventsHtml(events, teams=[]){
+ const groups=new Map();
+ for(const team of teams){
+  const key=String(team.accessCode || team.id || team.team || 'bez-kodu');
+  groups.set(key, {label:`${team.team || 'Bez názvu'} (${team.accessCode || 'bez kódu'})`, events:[]});
+ }
+ for(const e of events || []){
   const detail=safeJson(e.detail, {});
-  const type=detail.type || e.type || 'Událost';
-  const stationNo=detail.station || e.station || '';
-  return `<tr><td>${adminDate(e.time)}</td><td>${escapeHtml(e.team || detail.team || '—')}</td><td>${escapeHtml(adminEventName({type, hint:detail.hint}))}</td><td>${stationNo ? adminStationLabel(stationNo) : '—'}</td></tr>`;
+  const key=String(e.accessCode || detail.accessCode || e.teamId || detail.teamId || e.team || detail.team || 'bez-kodu');
+  if(!groups.has(key)) groups.set(key, {label:`${e.team || detail.team || 'Bez názvu'} (${e.accessCode || detail.accessCode || 'bez kódu'})`, events:[]});
+  groups.get(key).events.push({...e, detail});
+ }
+ if(!groups.size) return '<p class="small muted">Zatím nejsou online události.</p>';
+ return [...groups.values()].map(group=>{
+  const rows=group.events
+   .slice(-80)
+   .reverse()
+   .map(e=>{
+    const detail=e.detail || {};
+    const type=detail.type || e.type || 'Událost';
+    const stationNo=detail.station || e.station || '';
+    return `<tr><td>${adminDate(e.time)}</td><td>${escapeHtml(adminEventName({type, hint:detail.hint}))}</td><td>${stationNo ? adminStationLabel(stationNo) : '—'}</td></tr>`;
+   }).join('');
+  const body=rows
+   ? `<div style="overflow:auto"><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Zastávka</th></tr>${rows}</table></div>`
+   : '<p class="small muted">Zatím žádné kliknutí v online logu.</p>';
+  return `<div class="admin-subcard"><h4>${escapeHtml(group.label)}</h4>${body}</div>`;
  }).join('');
- return `<div style="overflow:auto"><table class="admin-table"><tr><th>Čas</th><th>Tým</th><th>Událost</th><th>Zastávka</th></tr>${rows}</table></div>`;
 }
 async function loadOnlineAdmin(){
  const panel=$('#onlineAdminPanel');
@@ -1042,7 +1070,7 @@ async function loadOnlineAdmin(){
   const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
   const events=Array.isArray(data?.events) ? data.events : (Array.isArray(data?.rows?.events) ? data.rows.events : []);
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
-  panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí</h3>${onlineEventsHtml(events)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
+  panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí podle týmů</h3>${onlineEventsHtml(events, teams)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
  }catch(e){
   console.error(e);
   const detail=escapeHtml(e?.message || 'Neznámá chyba načtení.');
@@ -1087,7 +1115,7 @@ function adminPreviewStation(id=null){
  let intro = st.intro || '';
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const hints = (st.hints || []).map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
- const solution = st.solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${ptxt(st.solution)}</div></div>` : '';
+ const solution = st.solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(st.solution)}</div></div>` : '';
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
