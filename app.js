@@ -134,7 +134,16 @@ async function restoreOnlineStateByCode(code){
  if(!url) return null;
  try{
   const data=await loadJsonp(url);
-  return stateFromOnlineRow(data?.team);
+  const restored=stateFromOnlineRow(data?.team);
+  if(restored) return restored;
+  const adminPassword=String(window.GAME_DATA?.adminPassword || '').trim();
+  if(!adminPassword) return null;
+  const adminData=await loadJsonp(monitorUrl('admin', {adminPassword, _: Date.now()}));
+  const rows=Array.isArray(adminData?.teams) ? adminData.teams : [];
+  const match=rows
+   .filter(row=>normalize(row.accessCode || '') === normalize(code))
+   .sort((a,b)=>String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
+  return stateFromOnlineRow(match);
  }catch(e){
   console.warn('Online restore failed', e);
   return null;
