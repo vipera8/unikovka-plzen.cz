@@ -851,6 +851,11 @@ function adminDate(iso){
   return new Date(iso).toLocaleString('cs-CZ', {day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
  }catch(e){ return '—'; }
 }
+function adminStationLabel(id){
+ const n=Number(id);
+ const st=station(n);
+ return st ? `${st.id}/13 – ${st.title}` : String(id || '—');
+}
 function adminRows(){
  const rows=adminLog();
  if(!Array.isArray(rows)) return [];
