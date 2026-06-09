@@ -2,6 +2,10 @@ const LEADERBOARD_SHEET = 'Leaderboard';
 const TEAMS_SHEET = 'Teams';
 const EVENTS_SHEET = 'Events';
 const ADMIN_PASSWORD = 'Groll1813';
+const EVENT_HEADERS = [
+  'time', 'teamId', 'team', 'accessCode', 'type', 'eventName',
+  'station', 'stationTitle', 'hint', 'value', 'detail'
+];
 
 function doGet(e) {
   const action = String(e.parameter.action || 'list');
@@ -54,18 +58,23 @@ function saveTeamState_(e) {
 }
 
 function saveEvent_(e) {
-  const sheet = getSheet_(EVENTS_SHEET, [
-    'time', 'teamId', 'team', 'accessCode', 'type', 'station', 'detail'
-  ]);
-  sheet.appendRow([
-    String(e.parameter.time || new Date().toISOString()),
-    String(e.parameter.teamId || ''),
-    String(e.parameter.team || ''),
-    String(e.parameter.accessCode || ''),
-    String(e.parameter.type || ''),
-    Number(e.parameter.station || 1),
-    String(e.parameter.detail || '{}')
-  ]);
+  const sheet = getSheet_(EVENTS_SHEET, EVENT_HEADERS);
+  ensureHeaders_(sheet, EVENT_HEADERS);
+  const item = {
+    time: String(e.parameter.time || new Date().toISOString()),
+    teamId: String(e.parameter.teamId || ''),
+    team: String(e.parameter.team || ''),
+    accessCode: String(e.parameter.accessCode || ''),
+    type: String(e.parameter.type || ''),
+    eventName: String(e.parameter.eventName || ''),
+    station: Number(e.parameter.station || 1),
+    stationTitle: String(e.parameter.stationTitle || ''),
+    hint: String(e.parameter.hint || ''),
+    value: String(e.parameter.value || ''),
+    detail: String(e.parameter.detail || '{}')
+  };
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  sheet.appendRow(headers.map(header => item[header] !== undefined ? item[header] : ''));
   return json_({ ok: true }, e);
 }
 
@@ -142,6 +151,14 @@ function getSheet_(name, headers) {
   if (!sheet) sheet = ss.insertSheet(name);
   if (sheet.getLastRow() === 0) sheet.appendRow(headers);
   return sheet;
+}
+
+function ensureHeaders_(sheet, requiredHeaders) {
+  const lastColumn = Math.max(sheet.getLastColumn(), 1);
+  const current = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(String);
+  const missing = requiredHeaders.filter(header => current.indexOf(header) === -1);
+  if (!missing.length) return;
+  sheet.getRange(1, current.length + 1, 1, missing.length).setValues([missing]);
 }
 
 function findRowById_(sheet, id) {

@@ -82,13 +82,19 @@ function syncTeamState(s){
 }
 function sendMonitorEvent(row, s){
  if(!s?.id) return;
+ const stationId=row.station || s.currentStation || 1;
+ const st=station(Number(stationId));
  fireAndForget(monitorUrl('event', {
   teamId:s.id,
   team:s.team || '',
   accessCode:s.accessCode || '',
   time:row.time,
   type:row.type,
-  station:row.station || s.currentStation || 1,
+  eventName:adminEventName(row),
+  station:stationId,
+  stationTitle:st?.title || '',
+  hint:row.hint || '',
+  value:row.value || '',
   detail:JSON.stringify(row)
  }));
 }
@@ -981,7 +987,6 @@ function adminPanelHtml(){
  };
  return `<h2>Admin panel</h2>
   <div class="grid two admin-actions">
-   <button class="btn secondary" onclick="openAdminPanel()">Obnovit místní údaje</button>
    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
   </div>
   ${safeCard('Náhled zastávek', ()=>adminStationSelect())}
