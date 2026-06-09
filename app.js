@@ -974,7 +974,6 @@ function adminPanelHtml(){
    <button class="btn secondary" onclick="openAdminPanel()">Obnovit místní údaje</button>
    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
   </div>
-  ${safeCard('Aktuální tým', ()=>adminTeamCard(s, rows))}
   ${safeCard('Chybné app-kódy', ()=>`<div class="admin-card">${adminWrongHtml(s, rows)}</div>`)}
   ${safeCard('Použité nápovědy', ()=>`<div class="admin-card">${adminHintsSummary(s)}</div>`)}
   ${safeCard('Log událostí', ()=>`<div class="admin-card">${adminLogHtml(rows)}</div>`)}
