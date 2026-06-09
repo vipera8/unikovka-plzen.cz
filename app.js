@@ -1019,14 +1019,15 @@ async function loadOnlineAdmin(){
  try{
   const adminPassword=window._adminPass || String(window.GAME_DATA?.adminPassword || '').trim();
   const data=await loadJsonp(monitorUrl('admin', {adminPassword, _: Date.now()}));
-  if(data?.error === 'unauthorized') throw new Error('Unauthorized admin monitor');
+  if(data?.error === 'unauthorized') throw new Error('Admin heslo nebylo přijato online skriptem.');
   const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
   const events=Array.isArray(data?.events) ? data.events : (Array.isArray(data?.rows?.events) ? data.rows.events : []);
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
   panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí</h3>${onlineEventsHtml(events)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
  }catch(e){
   console.error(e);
-  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Online přehled se nepodařilo načíst. Zkontrolujte prosím nastavení gameMonitorEndpoint a nasazení Google Apps Scriptu.</p>';
+  const detail=escapeHtml(e?.message || 'Neznámá chyba načtení.');
+  panel.innerHTML=`<h3>Online týmy</h3><p class="small muted">Online přehled se nepodařilo načíst. Detail: ${detail}</p><p class="small muted">Pokud je zde „JSONP failed“ nebo „JSONP timeout“, je potřeba znovu nasadit aktuální Google Apps Script jako webovou aplikaci pro všechny uživatele.</p><button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Zkusit znovu</button>`;
  }
 }
 window.loadOnlineAdmin = loadOnlineAdmin;
