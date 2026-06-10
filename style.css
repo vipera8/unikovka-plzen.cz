@@ -1493,3 +1493,13 @@
   -webkit-mask-image:radial-gradient(ellipse at 55% 50%, rgba(0,0,0,1) 18%, rgba(0,0,0,.92) 36%, rgba(0,0,0,.62) 55%, rgba(0,0,0,.28) 72%, rgba(0,0,0,.08) 86%, rgba(0,0,0,0) 100%)!important;
   mask-image:radial-gradient(ellipse at 55% 50%, rgba(0,0,0,1) 18%, rgba(0,0,0,.92) 36%, rgba(0,0,0,.62) 55%, rgba(0,0,0,.28) 72%, rgba(0,0,0,.08) 86%, rgba(0,0,0,0) 100%)!important;
 }
+
+/* v112 extra soft fade for gift voucher edges */
+.section-divider-art.voucher-art .voucher-illustration{
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  filter:drop-shadow(0 18px 34px rgba(45,24,8,.22))!important;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,1) 26%, rgba(0,0,0,.92) 42%, rgba(0,0,0,.66) 58%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.12) 84%, rgba(0,0,0,0) 96%)!important;
+  mask-image:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,1) 26%, rgba(0,0,0,.92) 42%, rgba(0,0,0,.66) 58%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.12) 84%, rgba(0,0,0,0) 96%)!important;
+}
