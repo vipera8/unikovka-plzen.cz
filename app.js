@@ -1234,34 +1234,16 @@ async function adminLogin(event){
 }
 window.adminLogin = adminLogin;
 const adminStationCache = new Map();
-function activeBackendAccessCode(){
- const accessCode=(getState()?.accessCode || activeAccessCode() || '').trim();
- if(!accessCode) throw new Error('missing_access_code');
- return accessCode;
-}
-async function fetchAdminStationHints(id){
+async function fetchAdminStationData(id){
  const cached=adminStationCache.get(id);
- if(cached?.hints) return cached.hints;
- const accessCode=activeBackendAccessCode();
- const hintCount=stationHintCount(station(id));
- const hintRequests=Array.from({length:hintCount}, (_,i)=>backendRequest('hint', {accessCode, station:id, num:i+1, _:Date.now()}));
- const hintResults=await Promise.all(hintRequests);
- const hints=hintResults.map(data=>{
-  if(!data?.ok) throw new Error(data?.error || 'admin_hint_failed');
-  return data.hint;
- });
- adminStationCache.set(id, {...(cached||{}), hints});
- return hints;
-}
-async function fetchAdminStationSolution(id){
- const cached=adminStationCache.get(id);
- if(cached && Object.prototype.hasOwnProperty.call(cached, 'solution')) return cached.solution;
- const accessCode=activeBackendAccessCode();
- const solutionData=await backendRequest('solution', {accessCode, station:id, _:Date.now()});
- if(!solutionData?.ok) throw new Error(solutionData?.error || 'admin_solution_failed');
- const solution=solutionData.solution;
- adminStationCache.set(id, {...(cached||{}), solution});
- return solution;
+ if(cached?.loaded) return cached;
+ const adminPassword=window._adminPass || '';
+ if(!adminPassword) throw new Error('missing_admin_password');
+ const data=await backendRequest('adminStation', {adminPassword, station:id, _:Date.now()});
+ if(!data?.ok) throw new Error(data?.error || 'admin_station_failed');
+ const stationData={loaded:true,hints:Array.isArray(data.hints)?data.hints:[],solution:data.solution || ''};
+ adminStationCache.set(id, stationData);
+ return stationData;
 }
 function renderAdminHints(st, hints=[], solution='', solutionLoading=false){
  const hintItems=Array.isArray(hints) ? hints : [];
@@ -1295,11 +1277,8 @@ async function adminPreviewStation(id=null){
   updatePreview('<div class="admin-card"><p>Načítám nápovědy...</p></div>');
  }
  try{
-  const hints=await fetchAdminStationHints(id);
-  const latest=adminStationCache.get(id) || {};
-  updatePreview(renderAdminHints(st, hints, latest.solution, !Object.prototype.hasOwnProperty.call(latest, 'solution')));
-  const solution=await fetchAdminStationSolution(id);
-  updatePreview(renderAdminHints(st, hints, solution, false));
+  const stationData=await fetchAdminStationData(id);
+  updatePreview(renderAdminHints(st, stationData.hints, stationData.solution, false));
  }catch(e){
   console.error(e);
   updatePreview('<div class="admin-card"><p class="small muted">Nápovědy a řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste otevřít náhled znovu.</p></div>');

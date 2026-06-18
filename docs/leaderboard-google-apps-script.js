@@ -32,6 +32,7 @@ function doGet(e){
   if(a==='event') return saveEvent_(e);
   if(a==='restore') return restoreTeamByCode_(e);
   if(a==='admin') return requireAdmin_(e,()=>json_(adminData_(),e));
+  if(a==='adminStation') return requireAdmin_(e,()=>json_(adminStationData_(e),e));
   if(a==='add') return addLeaderboard_(e);
   return json_({rows:leaderboardRows_()},e);
 }
@@ -101,6 +102,16 @@ function solution_(e){
   const station=Number(e.parameter.station||e.parameter.stationId||0), secret=stationSecret_(station);
   if(!secret) return json_({ok:false,error:'invalid_station'},e);
   return json_({ok:true,station,solution:withSecretImages_(parseJson_(secret.solutionJson,''))},e);
+}
+function adminStationData_(e){
+  const station=Number(e.parameter.station||e.parameter.stationId||0), secret=stationSecret_(station);
+  if(!secret) return {ok:false,error:'invalid_station'};
+  return {
+    ok:true,
+    station,
+    hints:withSecretImages_(parseJson_(secret.hintsJson,[])),
+    solution:withSecretImages_(parseJson_(secret.solutionJson,''))
+  };
 }
 function saveLead_(e){
   const sh=getSheet_(SHEETS.leads,HEADERS.leads); const payloadText=String(e.parameter.payload||'{}'); const p=parseJson_(payloadText,{});
