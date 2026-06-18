@@ -1233,28 +1233,43 @@ async function adminLogin(event){
  return false;
 }
 window.adminLogin = adminLogin;
-async function fetchAdminStationContent(id){
+const adminStationCache = new Map();
+function activeBackendAccessCode(){
  const accessCode=(getState()?.accessCode || activeAccessCode() || '').trim();
  if(!accessCode) throw new Error('missing_access_code');
+ return accessCode;
+}
+async function fetchAdminStationHints(id){
+ const cached=adminStationCache.get(id);
+ if(cached?.hints) return cached.hints;
+ const accessCode=activeBackendAccessCode();
  const hintCount=stationHintCount(station(id));
  const hintRequests=Array.from({length:hintCount}, (_,i)=>backendRequest('hint', {accessCode, station:id, num:i+1, _:Date.now()}));
- const [hintResults, solutionData]=await Promise.all([
-  Promise.all(hintRequests),
-  backendRequest('solution', {accessCode, station:id, _:Date.now()})
- ]);
+ const hintResults=await Promise.all(hintRequests);
  const hints=hintResults.map(data=>{
   if(!data?.ok) throw new Error(data?.error || 'admin_hint_failed');
   return data.hint;
  });
- if(!solutionData?.ok) throw new Error(solutionData?.error || 'admin_solution_failed');
- return {ok:true, station:id, hints, solution:solutionData.solution};
+ adminStationCache.set(id, {...(cached||{}), hints});
+ return hints;
 }
-function renderAdminHints(st, hints=[], solution=''){
+async function fetchAdminStationSolution(id){
+ const cached=adminStationCache.get(id);
+ if(cached && Object.prototype.hasOwnProperty.call(cached, 'solution')) return cached.solution;
+ const accessCode=activeBackendAccessCode();
+ const solutionData=await backendRequest('solution', {accessCode, station:id, _:Date.now()});
+ if(!solutionData?.ok) throw new Error(solutionData?.error || 'admin_solution_failed');
+ const solution=solutionData.solution;
+ adminStationCache.set(id, {...(cached||{}), solution});
+ return solution;
+}
+function renderAdminHints(st, hints=[], solution='', solutionLoading=false){
  const hintItems=Array.isArray(hints) ? hints : [];
  const hintHtml=hintItems.map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
  const solutionHtml=solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(solution)}</div></div>` : '';
- if(!hintHtml && !solutionHtml) return '<div class="admin-card"><p class="small muted">Nápovědy ani řešení se nepodařilo načíst.</p></div>';
- return `${hintHtml}${solutionHtml}`;
+ const loadingHtml=solutionLoading ? '<div class="admin-card"><p>Načítám řešení...</p></div>' : '';
+ if(!hintHtml && !solutionHtml && !loadingHtml) return '<div class="admin-card"><p class="small muted">Nápovědy ani řešení se nepodařilo načíst.</p></div>';
+ return `${hintHtml}${solutionHtml}${loadingHtml}`;
 }
 async function adminPreviewStation(id=null){
  if(id===null){
@@ -1268,13 +1283,26 @@ async function adminPreviewStation(id=null){
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
- modal(shellHtml('<div class="admin-card"><p>Načítám nápovědy a řešení...</p></div>'), false);
+ const token=`${id}-${Date.now()}`;
+ window._adminPreviewToken=token;
+ const updatePreview=secretHtml=>{
+  if(window._adminPreviewToken===token) modal(shellHtml(secretHtml), false);
+ };
+ const cached=adminStationCache.get(id);
+ if(cached?.hints){
+  updatePreview(renderAdminHints(st, cached.hints, cached.solution, !Object.prototype.hasOwnProperty.call(cached, 'solution')));
+ }else{
+  updatePreview('<div class="admin-card"><p>Načítám nápovědy...</p></div>');
+ }
  try{
-  const data=await fetchAdminStationContent(id);
-  modal(shellHtml(renderAdminHints(st, data.hints, data.solution)), false);
+  const hints=await fetchAdminStationHints(id);
+  const latest=adminStationCache.get(id) || {};
+  updatePreview(renderAdminHints(st, hints, latest.solution, !Object.prototype.hasOwnProperty.call(latest, 'solution')));
+  const solution=await fetchAdminStationSolution(id);
+  updatePreview(renderAdminHints(st, hints, solution, false));
  }catch(e){
   console.error(e);
-  modal(shellHtml('<div class="admin-card"><p class="small muted">Nápovědy a řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste otevřít náhled znovu.</p></div>'), false);
+  updatePreview('<div class="admin-card"><p class="small muted">Nápovědy a řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste otevřít náhled znovu.</p></div>');
  }
 }
 window.adminPreviewStation = adminPreviewStation;
