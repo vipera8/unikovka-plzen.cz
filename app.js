@@ -1233,7 +1233,30 @@ async function adminLogin(event){
  return false;
 }
 window.adminLogin = adminLogin;
-function adminPreviewStation(id=null){
+async function fetchAdminStationContent(id){
+ const accessCode=(getState()?.accessCode || activeAccessCode() || '').trim();
+ if(!accessCode) throw new Error('missing_access_code');
+ const hintCount=stationHintCount(station(id));
+ const hintRequests=Array.from({length:hintCount}, (_,i)=>backendRequest('hint', {accessCode, station:id, num:i+1, _:Date.now()}));
+ const [hintResults, solutionData]=await Promise.all([
+  Promise.all(hintRequests),
+  backendRequest('solution', {accessCode, station:id, _:Date.now()})
+ ]);
+ const hints=hintResults.map(data=>{
+  if(!data?.ok) throw new Error(data?.error || 'admin_hint_failed');
+  return data.hint;
+ });
+ if(!solutionData?.ok) throw new Error(solutionData?.error || 'admin_solution_failed');
+ return {ok:true, station:id, hints, solution:solutionData.solution};
+}
+function renderAdminHints(st, hints=[], solution=''){
+ const hintItems=Array.isArray(hints) ? hints : [];
+ const hintHtml=hintItems.map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
+ const solutionHtml=solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(solution)}</div></div>` : '';
+ if(!hintHtml && !solutionHtml) return '<div class="admin-card"><p class="small muted">Nápovědy ani řešení se nepodařilo načíst.</p></div>';
+ return `${hintHtml}${solutionHtml}`;
+}
+async function adminPreviewStation(id=null){
  if(id===null){
   const n=prompt('Číslo zastávky 1–13:');
   if(n===null) return;
@@ -1243,10 +1266,16 @@ function adminPreviewStation(id=null){
  const st=station(id);
  let intro = st.intro || '';
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
- const hints = `<div class="admin-card"><p><b>Nápovědy:</b> ${stationHintCount(st)} položky jsou uložené v Google Apps Scriptu.</p></div>`;
- const solution = '';
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
- modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ modal(shellHtml('<div class="admin-card"><p>Načítám nápovědy a řešení...</p></div>'), false);
+ try{
+  const data=await fetchAdminStationContent(id);
+  modal(shellHtml(renderAdminHints(st, data.hints, data.solution)), false);
+ }catch(e){
+  console.error(e);
+  modal(shellHtml('<div class="admin-card"><p class="small muted">Nápovědy a řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste otevřít náhled znovu.</p></div>'), false);
+ }
 }
 window.adminPreviewStation = adminPreviewStation;
 window.openAdminPanel = openAdminPanel;
