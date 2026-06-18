@@ -37,6 +37,25 @@ function fireAndForget(url){
  const img=new Image();
  img.src=url;
 }
+function backendEndpoint(){ return String(window.GAME_DATA?.gameBackendEndpoint || window.GAME_DATA?.gameMonitorEndpoint || window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
+function backendUrl(action, params={}){
+ const endpoint=backendEndpoint();
+ if(!endpoint) return '';
+ const url=new URL(endpoint);
+ url.searchParams.set('action', action);
+ for(const [key,value] of Object.entries(params)){
+  if(value!==undefined && value!==null) url.searchParams.set(key, String(value));
+ }
+ return url.toString();
+}
+async function backendRequest(action, params={}){
+ const url=backendUrl(action, params);
+ if(!url) throw new Error('Backend endpoint není nastaven.');
+ return await loadJsonp(url);
+}
+function stationHintCount(st){ return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
+function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
+function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
 function publicTeamState(s){
  if(!s) return null;
  return {
@@ -139,16 +158,6 @@ async function restoreOnlineStateByCode(code){
  window._lastRestoreError='';
  if(!monitorEndpoint()) return null;
  try{
-  const adminPassword=String(window.GAME_DATA?.adminPassword || '').trim();
-  if(adminPassword){
-   const adminData=await loadJsonp(monitorUrl('admin', {adminPassword, _: Date.now()}));
-   const rows=Array.isArray(adminData?.teams) ? adminData.teams : [];
-   const match=rows
-    .filter(row=>normalize(row.accessCode || '') === normalize(code))
-    .sort((a,b)=>String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
-   const fromAdmin=stateFromOnlineRow(match);
-   if(fromAdmin) return fromAdmin;
-  }
   const data=await loadJsonp(monitorUrl('restore', {accessCode:normalize(code), _: Date.now()}));
   const restored=stateFromOnlineRow(data?.team);
   return restored;
@@ -255,7 +264,9 @@ window.addEventListener('storage', e=>{
 });
 const ACCESS_KEY='grollovaCestaAccess.v1';
 function hasGameAccess(){ return localStorage.getItem(ACCESS_KEY)==='ok'; }
-function validAccessCode(code){ const list=(DATA.webAccessCodes||['TEST']).map(normalize); return list.includes(normalize(code)); }
+async function validateAccessCode(code){
+ return await backendRequest('validateAccessCode', {accessCode:normalize(code), _:Date.now()});
+}
 function grantGameAccess(){ localStorage.setItem(ACCESS_KEY,'ok'); }
 function openGameGate(){
  setRoute('/hra');
@@ -319,7 +330,7 @@ function renderWebsite(){
   <section class="web-section"><h2>Co si vzít s sebou?</h2><p>Ke hře nepotřebujete žádné speciální vybavení. Vše důležité dostanete na startu v herním batohu.</p><ul class="check-list"><li>nabitý chytrý telefon</li><li>mobilní internet</li><li>pohodlnou obuv</li><li>oblečení podle počasí</li><li>ideálně powerbanku</li><li>chuť objevovat a trochu trpělivosti při luštění</li></ul><p>Hra probíhá venku, proto se oblečte podle aktuálního počasí.</p></section>
   <section class="web-section dark-band"><h2>Pravidla hry</h2><p>Grollova zlatá stopa probíhá ve veřejném prostoru historického centra Plzně. Všechny úkoly jsou navrženy tak, aby byly řešitelné bezpečně, bez vstupování do zakázaných prostor a bez použití síly.</p><p>Během hry není potřeba nic ničit, rozebírat, přelézat ani násilím otevírat. Všechny odpovědi najdete pozorováním, logikou a správným použitím herních pomůcek.</p><p>Prosíme hráče, aby během hry dodržovali pravidla silničního provozu, respektovali veřejný prostor a brali ohled na ostatní návštěvníky města.</p><p>Za děti odpovídá dospělý doprovod.</p></section>
   <section id="faq" class="web-section"><h2>FAQ</h2><div class="faq-grid">${webFaq('Musíme si instalovat aplikaci?','Ne. Hra běží ve webové aplikaci, kterou otevřete v telefonu. Stačí mobilní internet.')}${webFaq('Dozvíme se trasu předem?','Ne. Přesná trasa je součástí hry a budete ji objevovat postupně. Předem znáte pouze místo startu.')}${webFaq('Co když se zasekneme?','Ve hře jsou dostupné nápovědy, které vás postupně navedou dál.')}${webFaq('Je hra vhodná pro děti?','Ano, ale šifry jsou navržené hlavně pro dospělé a starší děti. Menší děti se mohou zapojit s pomocí dospělých.')}${webFaq('Jak dlouho hra trvá?','Přibližně 3–4 hodiny podle tempa týmu.')}${webFaq('Kolik měří trasa?','Přibližně 4–4,5 km.')}${webFaq('Kde hra začíná?','V hlavní hale plzeňského vlakového nádraží, u sochy Železničáře.')}${webFaq('Co když bude pršet?','Hra probíhá venku, proto doporučujeme sledovat počasí. V případě velmi nepříznivého počasí je možné domluvit náhradní termín.')}</div></section>
-  <section id="kontakt" class="web-section contact-section"><h2>Kontakt</h2><p><b>Telefon:</b> <a href="tel:+420737256827">737 256 827</a><br><b>E-mail:</b> <a href="mailto:hravaplzen@gmail.com">hravaplzen@gmail.com</a></p><p class="small muted">Připraveno pro pozdější změnu na info@hravaplzen.cz nebo rezervace@hravaplzen.cz.</p>${webForm('kontakt','Napište nám',['Jméno','E-mail','Telefon','Zpráva'],false,'Děkujeme za zprávu. Brzy se ozveme.')}</section>
+  <section id="kontakt" class="web-section contact-section"><h2>Kontakt</h2><p><b>Telefon:</b> <a href="tel:+420737256827">737 256 827</a><br><b>E-mail:</b> <a href="mailto:hravaplzen@gmail.com">hravaplzen@gmail.com</a></p>${webForm('kontakt','Napište nám',['Jméno','E-mail','Telefon','Zpráva'],false,'Děkujeme za zprávu. Brzy se ozveme.')}</section>
   <footer class="web-footer"><p>© Hravá Plzeň · Grollova zlatá stopa</p><a class="web-cta small play-game-button" href="#/hra" onclick="event.preventDefault(); openGameGate()">Spustit hru</a></footer>
  </main>`;
  document.body.classList.remove('web-menu-open');
@@ -333,17 +344,27 @@ function webForm(type,title,fields,terms,msg){
  const inputs=fields.map(f=>`<label>${f}<input name="${f}" ${f.includes('E-mail')?'type="email"':f.includes('termín')||f.includes('Termín')?'type="date"':f.includes('čas')||f.includes('Čas')?'type="time"':'type="text"'} ${f.includes('Poznámka')||f.includes('Zpráva')?'data-long="1"':''}></label>`).join('');
  return `<form class="web-form" onsubmit="submitLeadForm(event,'${type}','${msg.replace(/'/g,'&#039;')}')"><h3>${title}</h3><input class="hp-field" name="website" tabindex="-1" autocomplete="off">${inputs}<label class="check"><input type="checkbox" required> <span>Souhlasím se zpracováním osobních údajů.</span></label>${terms?`<label class="check"><input type="checkbox" required> <span>Souhlasím s obchodními a storno podmínkami.</span></label>`:''}<button class="web-cta" type="submit">Odeslat</button><p class="form-confirm" aria-live="polite"></p></form>`;
 }
-function submitLeadForm(e,type,message){
+async function submitLeadForm(e,type,message){
  e.preventDefault();
  const form=e.currentTarget;
  if(form.website?.value) return;
  const fd=new FormData(form);
- const lines=[`Typ formuláře: ${type}`];
- for(const [k,v] of fd.entries()){ if(k==='website') continue; if(String(v).trim()) lines.push(`${k}: ${v}`); }
- const subject=encodeURIComponent('Hravá Plzeň – '+type);
- const body=encodeURIComponent(lines.join('\n'));
- form.querySelector('.form-confirm').textContent=message;
- window.location.href=`mailto:hravaplzen@gmail.com?subject=${subject}&body=${body}`;
+ const payload={};
+ for(const [k,v] of fd.entries()){ if(k==='website') continue; if(String(v).trim()) payload[k]=String(v).trim(); }
+ const btn=form.querySelector('button[type="submit"]');
+ const confirm=form.querySelector('.form-confirm');
+ if(btn) btn.disabled=true;
+ try{
+  const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), _:Date.now()});
+  if(!data?.ok) throw new Error(data?.error || 'lead_failed');
+  if(confirm) confirm.textContent=message;
+  form.reset();
+ }catch(err){
+  if(confirm) confirm.textContent='Odeslání se nepodařilo. Zkuste to prosím znovu nebo nám napište e-mail.';
+  toast('Odeslání se nepodařilo. Zkuste to prosím znovu.');
+ }finally{
+  if(btn) btn.disabled=false;
+ }
 }
 function renderAccessGate(){
  app.innerHTML = `<main class="phone access-gate"><section class="content"><div class="hero hero-intro"><h1>Spustit hru</h1><p>Zadejte přístupový kód, který jste obdrželi po rezervaci.</p></div><div class="card"><label>Přístupový kód</label><input id="accessCode" type="text" placeholder="KÓD" autocomplete="one-time-code"><button id="accessContinue" class="btn" type="button" style="margin-top:12px">Pokračovat</button><p id="accessError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px">Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.</p><p class="small muted">Kód slouží pouze pro spuštění zaplacené hry.</p></div><button class="btn ghost" type="button" onclick="backToWebsite()">Zpět na web</button></section></main>`;
@@ -357,16 +378,29 @@ function renderAccessGate(){
 }
 async function verifyAccessCode(){
  const input=$('#accessCode');
+ const btn=$('#accessContinue');
  const err=$('#accessError');
  const val=input?.value || '';
- if(!validAccessCode(val)){
-  if(err) err.style.display='block';
+ let result=null;
+ if(btn) btn.disabled=true;
+ try{
+  result=await validateAccessCode(val);
+ }catch(e){
+  if(err){ err.textContent='Kód se nepodařilo ověřit. Zkontrolujte připojení k internetu a zkuste to znovu.'; err.style.display='block'; }
+  toast('Kód se nepodařilo ověřit. Zkuste to znovu.');
+  if(input) input.focus();
+  if(btn) btn.disabled=false;
+  return false;
+ }
+ if(btn) btn.disabled=false;
+ if(!result?.ok){
+  if(err){ err.textContent='Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.'; err.style.display='block'; }
   toast('Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.');
   if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
   return false;
  }
  if(err) err.style.display='none';
- const code=normalize(val);
+ const code=normalize(result.accessCode || val);
  sessionStorage.setItem(ACCESS_CODE_KEY, code);
  localStorage.setItem(ACCESS_CODE_KEY, code);
  grantGameAccess();
@@ -466,17 +500,22 @@ function renderSolutionContent(solution){
 
 function renderHints(st, hintState){
  let html='';
- const openedSolution = !!(getState()?.solutions?.[st.id]);
- for(let i=0;i<st.hints.length;i++){
+ const s=getState();
+ const openedSolution = !!(s?.solutions?.[st.id]);
+ const hintCount=stationHintCount(st);
+ for(let i=0;i<hintCount;i++){
   // Na začátku je vidět pouze Nápověda 1. Každá otevřená nápověda zpřístupní další.
   if(i===0 || hintState>=i){
-   const opened = hintState>i;
-   html+=`<div class="accordion ${opened?'open':''}"><button class="acc-head" onclick="openHint(${st.id},${i+1})">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(st.hints[i])}</div></div>`;
+   const num=i+1;
+   const opened = hintState>=num;
+   const body = opened ? renderHintContent(hintText(s, st.id, num)) : '';
+   html+=`<div class="accordion ${opened?'open':''}"><button class="acc-head" onclick="openHint(${st.id},${num})">Nápověda ${num} <span>⌄</span></button><div class="acc-body">${body}</div></div>`;
   }
  }
  // Řešení se zobrazí až po otevření poslední nápovědy. Předchozí nápovědy zůstávají dostupné.
- if(hintState>=st.hints.length){
-  html+=`<div class="accordion ${openedSolution?'open':''}"><button class="acc-head" onclick="openSolution(${st.id}, this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(st.solution)}</div></div>`;
+ if(hintState>=hintCount){
+  const body = openedSolution ? renderSolutionContent(solutionText(s, st.id)) : '';
+  html+=`<div class="accordion ${openedSolution?'open':''}"><button class="acc-head" onclick="openSolution(${st.id}, this)">Řešení <span>⌄</span></button><div class="acc-body">${body}</div></div>`;
  }
  return html;
 }
@@ -582,20 +621,36 @@ function BeerProgress({completedStops=0,totalStops=13,size='small',animated=fals
 }
 function beerProgress(done){ return BeerProgress({completedStops:done,totalStops:DATA.stations.length,size:'small',animated:false}); }
 function unlockDiary(){ const s=getState(); s.diaryUnlocked=true; saveState(s); addLog('diary_unlocked'); toast('Deník odemčen.'); render(); }
-function openHint(id,num){
+async function openHint(id,num){
  const s=getState();
- s.hints[id]=Math.max(s.hints[id]||0,num);
- saveState(s);
- addLog('hint_opened',{hint:num});
- returnToGame();
+ try{
+  const data=await backendRequest('hint', {accessCode:s.accessCode || activeAccessCode(), station:id, num, _:Date.now()});
+  if(!data?.ok) throw new Error(data?.error || 'hint_failed');
+  s.hintTexts={...(s.hintTexts||{}),[id]:{...((s.hintTexts||{})[id]||{}),[num]:data.hint}};
+  s.hints[id]=Math.max(s.hints[id]||0,num);
+  saveState(s);
+  addLog('hint_opened',{hint:num});
+  returnToGame();
+ }catch(e){
+  toast('Nápovědu se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
+ }
 }
-function revealSolution(id){ const s=getState(); s.hints[id]=station(id).hints.length; saveState(s); addLog('solution_available'); returnToGame(); }
-function openSolution(id, btn){
+function revealSolution(id){ const s=getState(); s.hints[id]=stationHintCount(station(id)); saveState(s); addLog('solution_available'); returnToGame(); }
+async function openSolution(id, btn){
  const s=getState();
- s.solutions[id]=true;
- saveState(s);
- addLog('solution_opened');
- if(btn) toggleAcc(btn); else render();
+ try{
+  if(!solutionText(s,id)){
+   const data=await backendRequest('solution', {accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()});
+   if(!data?.ok) throw new Error(data?.error || 'solution_failed');
+   s.solutionTexts={...(s.solutionTexts||{}),[id]:data.solution};
+  }
+  s.solutions[id]=true;
+  saveState(s);
+  addLog('solution_opened');
+  if(btn) toggleAcc(btn); else render();
+ }catch(e){
+  toast('Řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
+ }
 }
 function playUnlockFx(){
  try{
@@ -652,9 +707,17 @@ function toggleJingle(){
 }
 function playJingle(){ toggleJingle(); }
 function openCode(){ const st=station(getState().currentStation); if(st.id===13){ modal(`<h2>Dokončit hru</h2><p>Zadejte finální slovo z cryptexu.</p><div class="code-row"><input id="codeInput" type="text" placeholder="Zadejte slovo"><button class="btn" onclick="finishCode()">Ověřit</button></div>`); setTimeout(()=>$('#codeInput')?.focus(),50); return; } modal(`<h2>Zadat app-kód</h2><p>App-kód najdete na kartičce uvnitř fyzicky otevřené schránky.</p><div class="code-row"><input id="codeInput" type="text" placeholder="KÓD"><button class="btn" onclick="checkCode()">Ověřit</button></div><p class="small muted">Kontrola ignoruje mezery, velikost písmen a diakritiku.</p>`); setTimeout(()=>$('#codeInput')?.focus(),50); }
-function checkCode(){
+async function checkCode(){
  const s=getState(), st=station(s.currentStation), val=normalize($('#codeInput').value);
- if(val===normalize(st.unlockCode) || val==='TEST'){
+ let ok=false;
+ try{
+  const data=await backendRequest('checkStationCode', {accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()});
+  ok=!!data?.ok;
+ }catch(e){
+  toast('Kód se nepodařilo ověřit. Zkontrolujte připojení a zkuste to znovu.');
+  return;
+ }
+ if(ok){
   closeModal();
   completeStation();
  } else {
@@ -704,12 +767,17 @@ function completeStation(){
  }
  modal(`<div class="success-card"><h2>${successText}</h2><p>Výborně! Vaše další zastávka je:</p><h3>${escapeHtml(next.title)}</h3><div class="success-progress">${beer}</div><a class="btn" href="${mapsUrl(next)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Navigovat</a><button class="btn secondary" onclick="closeModal(); returnToGame()" style="margin-top:10px">Pokračovat na další zastávku</button></div>`, false);
 }
-function finishCode(){
- const val=normalize($('#codeInput').value);
- if(val==='ELIXIR' || val==='TEST'){
-  closeModal();
-  completeStation();
- } else toast('Finální slovo nesedí. Zkontrolujte pořadí lahviček.');
+async function finishCode(){
+ const s=getState(), st=station(s.currentStation), val=normalize($('#codeInput').value);
+ try{
+  const data=await backendRequest('checkStationCode', {accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()});
+  if(data?.ok){
+   closeModal();
+   completeStation();
+  } else toast('Finální slovo nesedí. Zkontrolujte pořadí lahviček.');
+ }catch(e){
+  toast('Finální slovo se nepodařilo ověřit. Zkontrolujte připojení a zkuste to znovu.');
+ }
 }
 function titleFor(ms){ const h=ms/36e5; if(h<=2.5) return 'Mistři sládkové'; if(h<=3) return 'Grollova pravá ruka'; if(h<=3.5) return 'Pivovarští tovaryši'; if(h<=4) return 'Hledači ztracené várky'; return 'Stateční poutníci za pivem'; }
 function renderFinish(){
@@ -1069,7 +1137,7 @@ async function loadOnlineAdmin(){
  }
  panel.innerHTML='<h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p>';
  try{
-  const adminPassword=window._adminPass || String(window.GAME_DATA?.adminPassword || '').trim();
+  const adminPassword=window._adminPass || '';
   const data=await loadJsonp(monitorUrl('admin', {adminPassword, _: Date.now()}));
   if(data?.error === 'unauthorized') throw new Error('Admin heslo nebylo přijato online skriptem.');
   const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
@@ -1084,18 +1152,21 @@ async function loadOnlineAdmin(){
 }
 window.loadOnlineAdmin = loadOnlineAdmin;
 
-function adminLogin(event){
+async function adminLogin(event){
  if(event) event.preventDefault();
  try{
   const input=$('#adminPass');
   const error=$('#adminLoginError');
   const pass = (input?.value || '').trim();
-  const adminPassword = String(window.GAME_DATA?.adminPassword || 'Groll1813').trim();
   if(error){ error.style.display='none'; error.textContent=''; }
-  if(!window._adminOk && pass!==adminPassword){
-   if(error){ error.textContent='Špatné heslo.'; error.style.display='block'; }
-   if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
-   return toast('Špatné heslo.');
+  if(!window._adminOk){
+   const data=await loadJsonp(monitorUrl('admin', {adminPassword:pass, _: Date.now()}));
+   if(data?.error === 'unauthorized' || data?.ok === false){
+    if(error){ error.textContent='Špatné heslo.'; error.style.display='block'; }
+    if(input){ input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),450); input.focus(); }
+    return toast('Špatné heslo.');
+   }
+   window._adminOk=true;
   }
   if(pass) window._adminPass=pass;
   openAdminPanel();
@@ -1119,10 +1190,10 @@ function adminPreviewStation(id=null){
  const st=station(id);
  let intro = st.intro || '';
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
- const hints = (st.hints || []).map((hint,i)=>`<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Nápověda ${i+1} <span>⌄</span></button><div class="acc-body">${renderHintContent(hint)}</div></div>`).join('');
- const solution = st.solution ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Řešení <span>⌄</span></button><div class="acc-body">${renderSolutionContent(st.solution)}</div></div>` : '';
+ const hints = `<div class="admin-card"><p><b>Nápovědy:</b> ${stationHintCount(st)} položky jsou uložené v Google Apps Scriptu.</p></div>`;
+ const solution = '';
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
- modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p><p><b>App-kód:</b> ${escapeHtml(st.unlockCode || '')}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+ modal(`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewCertificate()">Test certifikátu</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${more}${hints}${solution}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
 window.adminPreviewStation = adminPreviewStation;
 window.openAdminPanel = openAdminPanel;
@@ -1403,3 +1474,7 @@ let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ c
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 render();
+
+
+
+
