@@ -124,7 +124,7 @@ function loadJsonp(url){
   full.searchParams.set('callback', cb);
   const script=document.createElement('script');
   const cleanup=()=>{ delete window[cb]; script.remove(); };
-  const timer=setTimeout(()=>{ cleanup(); reject(new Error('JSONP timeout')); }, 12000);
+  const timer=setTimeout(()=>{ cleanup(); reject(new Error('JSONP timeout')); }, 25000);
   window[cb]=data=>{ clearTimeout(timer); cleanup(); resolve(data); };
   script.onerror=()=>{ clearTimeout(timer); cleanup(); reject(new Error('JSONP failed')); };
   script.src=full.toString();
@@ -446,7 +446,7 @@ Přejeme vám šťastnou cestu po Grollových stopách.`;}
 function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const s=defaultState(team); s.accessCode=sessionStorage.getItem(ACCESS_CODE_KEY)||''; s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
 function continueWithoutLocation(){ window._gpsOk=false; alert('Hru můžete hrát i bez sdílení polohy. Navigace z aplikace a odeslání vaší polohy přes SOS ale nebudou fungovat.'); }
 function requestPosBeforeStart(){ if(!navigator.geolocation) return toast('Poloha není v tomto prohlížeči dostupná.'); navigator.geolocation.getCurrentPosition(pos=>{ window._gpsOk=true; window._lastPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy}; toast('Poloha povolena.'); },()=>toast('Poloha nebyla povolena nebo se ji nepodařilo načíst.'),{enableHighAccuracy:true,timeout:8000}); }
-function renderStation(){ const s=getState(); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${st.id}/${DATA.stations.length} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:DATA.stations.length,size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); }
+function renderStation(){ const s=getState(); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${st.id}/${DATA.stations.length} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:DATA.stations.length,size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); if(!firstIntroOnly) prefetchStationHints(st.id); }
 function renderStationSpecial(st,s,hintState){
  if(st.id===1 && !s.diaryUnlocked){
   const intro = st.intro.split('Tlačítko:')[0];
@@ -621,15 +621,65 @@ function BeerProgress({completedStops=0,totalStops=13,size='small',animated=fals
 }
 function beerProgress(done){ return BeerProgress({completedStops:done,totalStops:DATA.stations.length,size:'small',animated:false}); }
 function unlockDiary(){ const s=getState(); s.diaryUnlocked=true; saveState(s); addLog('diary_unlocked'); toast('Deník odemčen.'); render(); }
+const pendingHints = new Map();
+const pendingSolutions = new Map();
+async function fetchHintText(id,num){
+ const s=getState();
+ if(hintText(s,id,num)) return hintText(s,id,num);
+ const key=`${id}:${num}`;
+ if(pendingHints.has(key)) return pendingHints.get(key);
+ const request=backendRequest('hint', {accessCode:s.accessCode || activeAccessCode(), station:id, num, _:Date.now()})
+  .then(data=>{
+   if(!data?.ok) throw new Error(data?.error || 'hint_failed');
+   const latest=getState();
+   latest.hintTexts={...(latest.hintTexts||{}),[id]:{...((latest.hintTexts||{})[id]||{}),[num]:data.hint}};
+   saveState(latest);
+   return data.hint;
+  })
+  .finally(()=>pendingHints.delete(key));
+ pendingHints.set(key, request);
+ return request;
+}
+async function fetchSolutionText(id){
+ const s=getState();
+ if(solutionText(s,id)) return solutionText(s,id);
+ if(pendingSolutions.has(id)) return pendingSolutions.get(id);
+ const request=backendRequest('solution', {accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()})
+  .then(data=>{
+   if(!data?.ok) throw new Error(data?.error || 'solution_failed');
+   const latest=getState();
+   latest.solutionTexts={...(latest.solutionTexts||{}),[id]:data.solution};
+   saveState(latest);
+   return data.solution;
+  })
+  .finally(()=>pendingSolutions.delete(id));
+ pendingSolutions.set(id, request);
+ return request;
+}
+function prefetchStationHints(id){
+ const st=station(id);
+ const count=stationHintCount(st);
+ if(!count) return;
+ for(let num=1; num<=count; num++){
+  fetchHintText(id,num).catch(()=>{});
+ }
+}
+function prefetchSolution(id){
+ fetchSolutionText(id).catch(()=>{});
+}
 async function openHint(id,num){
  const s=getState();
  try{
-  const data=await backendRequest('hint', {accessCode:s.accessCode || activeAccessCode(), station:id, num, _:Date.now()});
-  if(!data?.ok) throw new Error(data?.error || 'hint_failed');
-  s.hintTexts={...(s.hintTexts||{}),[id]:{...((s.hintTexts||{})[id]||{}),[num]:data.hint}};
-  s.hints[id]=Math.max(s.hints[id]||0,num);
-  saveState(s);
+  if(!hintText(s,id,num)) toast('Načítám nápovědu...');
+  const hint=await fetchHintText(id,num);
+  const latest=getState();
+  latest.hintTexts={...(latest.hintTexts||{}),[id]:{...((latest.hintTexts||{})[id]||{}),[num]:hint}};
+  latest.hints[id]=Math.max(latest.hints[id]||0,num);
+  saveState(latest);
   addLog('hint_opened',{hint:num});
+  const hintCount=stationHintCount(station(id));
+  if(num<hintCount) fetchHintText(id,num+1).catch(()=>{});
+  if(num>=hintCount) prefetchSolution(id);
   returnToGame();
  }catch(e){
   toast('Nápovědu se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
@@ -639,15 +689,14 @@ function revealSolution(id){ const s=getState(); s.hints[id]=stationHintCount(st
 async function openSolution(id, btn){
  const s=getState();
  try{
-  if(!solutionText(s,id)){
-   const data=await backendRequest('solution', {accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()});
-   if(!data?.ok) throw new Error(data?.error || 'solution_failed');
-   s.solutionTexts={...(s.solutionTexts||{}),[id]:data.solution};
-  }
-  s.solutions[id]=true;
-  saveState(s);
+  if(!solutionText(s,id)) toast('Načítám řešení...');
+  const solution=await fetchSolutionText(id);
+  const latest=getState();
+  latest.solutionTexts={...(latest.solutionTexts||{}),[id]:solution};
+  latest.solutions[id]=true;
+  saveState(latest);
   addLog('solution_opened');
-  if(btn) toggleAcc(btn); else render();
+  returnToGame();
  }catch(e){
   toast('Řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
  }

@@ -2,7 +2,7 @@
 const LEAD_NOTIFICATION_EMAIL = 'hravaplzen@gmail.com';
 const SHEETS = {
   leaderboard: 'Leaderboard', teams: 'Teams', events: 'Events',
-  accessCodes: 'AccessCodes', leads: 'Leads', secrets: 'List 1'
+  accessCodes: 'AccessCodes', leads: 'Leads', secrets: 'StationSecrets'
 };
 const HEADERS = {
   accessCodes: ['accessCode','customerName','email','phone','orderType','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt'],
