@@ -307,7 +307,7 @@ function renderWebsite(){
     <p>Vydejte se po stopách Josefa Grolla a zažijte Plzeň jako dobrodružství. Čeká vás venkovní úniková hra v historickém srdci města, ve které budete luštit šifry, otevírat skutečné zámky a postupně odhalovat tajemství ukryté mezi plzeňskými ulicemi.</p>
     <p>Na startu dostanete herní batoh s předměty, které budete opravdu držet v ruce, zkoumat, skládat a používat. Mobil vás povede, ale hlavní zážitek se odehrává venku, přímo ve městě.</p>
     <p class="hero-facts">13 zastávek. 3–4 hodiny dobrodružství. Skutečné rekvizity. Historická Plzeň jako hřiště.</p>
-    <div class="hero-actions"><a class="web-cta" href="#rezervace">Rezervovat hru</a><a class="web-cta alt" href="#poukazy">Koupit dárkový poukaz</a></div>
+    <div class="hero-actions"><a class="web-cta" href="#rezervace">Rezervovat hru</a><a class="web-cta alt" href="#poukazy">Koupit dárkový poukaz</a><a class="web-cta alt player-entry-cta" href="#/hra" onclick="event.preventDefault(); openGameGate()">Vstup pro hráče s kódem</a></div>
    </div>
   </section>
   <section class="web-section feature-row">
