@@ -1503,3 +1503,20 @@
   -webkit-mask-image:none!important;
   mask-image:none!important;
 }
+
+/* v122 legal pages and footer links */
+.footer-links{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.footer-links a{color:#f4d391;text-decoration:underline;text-underline-offset:4px}
+.legal-menu{display:flex;flex-wrap:wrap}
+.legal-content{max-width:980px}
+.legal-content h1{font-size:clamp(36px,5vw,64px);color:#ffe1a0;margin:0 0 24px}
+.legal-content h2{font-size:26px;margin-top:0}
+.legal-block{background:rgba(255,243,207,.08);border:1px solid rgba(212,166,78,.22);border-radius:22px;padding:22px;margin:16px 0;color:#fff2d4;line-height:1.65}
+.legal-block a{color:#ffd984}
+.legal-block .note{color:#3d230d}
+.web-form a{color:#4c2608;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:900px){
+  .footer-links{display:block}
+  .footer-links a{display:block;margin-top:10px}
+  .legal-menu{display:flex;position:static;background:transparent;border:0;padding:0;gap:12px}
+}
