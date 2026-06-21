@@ -1507,6 +1507,7 @@
 /* v122 legal pages and footer links */
 .footer-links{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
 .price-grid.price-grid-two{grid-template-columns:repeat(2, minmax(0,1fr));max-width:780px}
+.price-grid strong{white-space:nowrap;font-size:clamp(30px,8vw,34px)}
 .footer-links a{color:#f4d391;text-decoration:underline;text-underline-offset:4px}
 .legal-menu{display:flex;flex-wrap:wrap}
 .legal-content{max-width:980px}
@@ -1520,4 +1521,5 @@
   .footer-links{display:block}
   .footer-links a{display:block;margin-top:10px}
   .legal-menu{display:flex;position:static;background:transparent;border:0;padding:0;gap:12px}
+  .price-grid.price-grid-two{grid-template-columns:1fr;max-width:none}
 }
