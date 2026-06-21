@@ -890,6 +890,8 @@ function renderFinish(){
   <div class="grid cert-actions no-print" style="margin-top:14px">
     <button class="btn" onclick="downloadCertificate()">Stáhnout certifikát</button>
     <button class="btn secondary" onclick="shareResult()">Sdílet výsledek</button>
+    <button class="btn secondary" onclick="openSelfieBooth()">Vyfotit se s Grollem</button>
+    <button class="btn secondary" onclick="openReviewModal()">Ohodnotit hru</button>
     <button class="btn ghost" onclick="openLeaderboard()">Žebříček</button>
   </div>`);
  addLeaderboardOnce();
@@ -1449,6 +1451,186 @@ async function shareResult(){
  </div><p class="small muted share-note">Nejlepší volba je „Sdílet v telefonu“. Mobil pak nabídne dostupné aplikace, například Facebook, Instagram nebo zprávy. Přiloží se i obrázek certifikátu, pokud to telefon podporuje.</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
 }
 
+function reviewTarget(kind){
+ const cfg=window.GAME_DATA || {};
+ if(kind==='google') return String(cfg.googleReviewUrl || '').trim();
+ if(kind==='facebook') return String(cfg.facebookReviewUrl || '').trim();
+ return '';
+}
+function openReviewModal(){
+ const google=reviewTarget('google');
+ const facebook=reviewTarget('facebook');
+ addLog('review_modal_opened');
+ modal(`<h2>Jak se vám hrálo?</h2><p>Budeme moc rádi za pravdivé hodnocení. Pomůže dalším hráčům rozhodnout se, jestli se po Grollově stopě vydají také.</p><div class="review-actions">
+  <button class="btn" onclick="openReviewTarget('google')" ${google?'':'disabled'}>Ohodnotit na Googlu</button>
+  <button class="btn secondary" onclick="openReviewTarget('facebook')" ${facebook?'':'disabled'}>Ohodnotit na Facebooku</button>
+  <a class="btn ghost review-mail" href="mailto:hravaplzen@gmail.com?subject=Zpětná vazba ke Grollově zlaté stopě">Poslat zpětnou vazbu e-mailem</a>
+ </div>${google||facebook?'':'<p class="small muted">Odkaz na veřejné hodnocení doplníme po vytvoření firemního profilu nebo stránky s recenzemi.</p>'}<p class="small muted">Hodnocení je dobrovolné. Nejvíc nám pomůže krátká upřímná zkušenost: co se vám líbilo, pro koho byste hru doporučili a jestli všechno fungovalo bez potíží.</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+}
+function openReviewTarget(kind){
+ const url=reviewTarget(kind);
+ if(!url){ toast('Odkaz na hodnocení zatím není nastavený.'); return; }
+ addLog('review_clicked', {kind});
+ window.open(url, '_blank', 'noopener');
+}
+
+let selfieStream=null;
+let selfieLastBlob=null;
+const SELFIE_GROLL_SRC='assets/images/groll_selfie_overlay.png';
+function stopSelfieCamera(){
+ if(selfieStream){
+  selfieStream.getTracks().forEach(t=>t.stop());
+  selfieStream=null;
+ }
+}
+function openSelfieBooth(){
+ addLog('selfie_opened');
+ modal(`<h2>Vyfotit se s Grollem</h2><p class="small muted">Povolte fotoaparát, postavte se do záběru a nastavte Grolla tak, aby si s vámi připíjel.</p>
+  <div class="selfie-stage" id="selfieStage">
+   <video id="selfieVideo" class="selfie-video" autoplay playsinline muted></video>
+   <img id="selfieGroll" class="selfie-groll" src="${SELFIE_GROLL_SRC}" alt="Josef Groll připíjí pivem">
+   <canvas id="selfieCanvas" class="selfie-canvas" width="1080" height="1440"></canvas>
+   <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
+  </div>
+  <div class="selfie-controls">
+   <label>Velikost Grolla <input id="selfieSize" type="range" min="38" max="105" value="72" oninput="updateSelfieOverlay()"></label>
+   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="66" oninput="updateSelfieOverlay()"></label>
+   <label>Výška <input id="selfieY" type="range" min="0" max="55" value="2" oninput="updateSelfieOverlay()"></label>
+  </div>
+  <div class="grid two selfie-actions">
+   <button class="btn" onclick="captureGrollSelfie()">Vyfotit</button>
+   <button class="btn secondary" onclick="retakeGrollSelfie()">Zkusit znovu</button>
+   <button class="btn secondary" onclick="shareGrollSelfie()">Sdílet fotku</button>
+   <button class="btn ghost" onclick="downloadGrollSelfie()">Stáhnout fotku</button>
+  </div>
+  <p id="selfieStatus" class="small muted"></p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+ setTimeout(startSelfieCamera, 50);
+}
+async function startSelfieCamera(){
+ const status=$('#selfieStatus');
+ const video=$('#selfieVideo');
+ updateSelfieOverlay();
+ if(!navigator.mediaDevices?.getUserMedia){
+  if(status) status.textContent='Fotoaparát v tomto prohlížeči není dostupný.';
+  return;
+ }
+ try{
+  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+  if(video) video.srcObject=selfieStream;
+  if(status) status.textContent='Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
+ }catch(e){
+  if(status) status.textContent='Fotoaparát se nepodařilo spustit. Zkontrolujte oprávnění prohlížeče.';
+ }
+}
+function updateSelfieOverlay(){
+ const img=$('#selfieGroll');
+ if(!img) return;
+ const size=Number($('#selfieSize')?.value || 72);
+ const x=Number($('#selfieX')?.value || 66);
+ const y=Number($('#selfieY')?.value || 2);
+ img.style.height=size+'%';
+ img.style.left=x+'%';
+ img.style.bottom=y+'%';
+}
+async function captureGrollSelfie(){
+ const video=$('#selfieVideo'), groll=$('#selfieGroll'), canvas=$('#selfieCanvas'), result=$('#selfieResult'), status=$('#selfieStatus');
+ if(!video || !groll || !canvas || !video.videoWidth){ if(status) status.textContent='Fotoaparát ještě není připravený.'; return; }
+ const portrait=video.videoHeight>=video.videoWidth;
+ canvas.width=portrait ? 1080 : 1440;
+ canvas.height=portrait ? 1440 : 1080;
+ const ctx=canvas.getContext('2d');
+ ctx.save();
+ ctx.filter='sepia(.55) contrast(1.07) saturate(.86)';
+ ctx.translate(canvas.width,0);
+ ctx.scale(-1,1);
+ drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
+ ctx.restore();
+ const overlay=await loadImage(SELFIE_GROLL_SRC);
+ const size=Number($('#selfieSize')?.value || 72)/100;
+ const xPct=Number($('#selfieX')?.value || 66)/100;
+ const yPct=Number($('#selfieY')?.value || 2)/100;
+ const gh=canvas.height*size;
+ const gw=gh*(overlay.naturalWidth||overlay.width)/(overlay.naturalHeight||overlay.height);
+ const gx=canvas.width*xPct-gw/2;
+ const gy=canvas.height-canvas.height*yPct-gh;
+ ctx.drawImage(overlay,gx,gy,gw,gh);
+ drawSelfieFinish(ctx, canvas);
+ selfieLastBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+ if(result && selfieLastBlob){
+  result.src=URL.createObjectURL(selfieLastBlob);
+  result.style.display='block';
+  video.style.display='none';
+  groll.style.display='none';
+ }
+ if(status) status.textContent='Hotovo. Fotku si můžete stáhnout nebo sdílet přes telefon.';
+ addLog('selfie_captured');
+}
+function drawCover(ctx, source, x, y, w, h){
+ const sw=source.videoWidth || source.naturalWidth || source.width;
+ const sh=source.videoHeight || source.naturalHeight || source.height;
+ const scale=Math.max(w/sw,h/sh);
+ const dw=sw*scale, dh=sh*scale;
+ ctx.drawImage(source,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+}
+function drawSelfieFinish(ctx, canvas){
+ const vignette=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.width*.18,canvas.width/2,canvas.height/2,canvas.width*.82);
+ vignette.addColorStop(0,'rgba(255,244,210,0)');
+ vignette.addColorStop(1,'rgba(48,24,7,.42)');
+ ctx.fillStyle=vignette;
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.fillStyle='rgba(255,244,210,.16)';
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.strokeStyle='rgba(76,38,8,.65)';
+ ctx.lineWidth=Math.max(18,canvas.width*.018);
+ ctx.strokeRect(ctx.lineWidth/2,ctx.lineWidth/2,canvas.width-ctx.lineWidth,canvas.height-ctx.lineWidth);
+ ctx.fillStyle='rgba(43,24,10,.78)';
+ ctx.fillRect(0,canvas.height-92,canvas.width,92);
+ ctx.fillStyle='#f8dfaa';
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+ ctx.font=`700 ${Math.round(canvas.width*.036)}px Georgia, "Times New Roman", serif`;
+ ctx.fillText('Grollova zlatá stopa · Hravá Plzeň', canvas.width/2, canvas.height-46);
+}
+function retakeGrollSelfie(){
+ const video=$('#selfieVideo'), groll=$('#selfieGroll'), result=$('#selfieResult'), status=$('#selfieStatus');
+ if(result){ result.removeAttribute('src'); result.style.display='none'; }
+ if(video) video.style.display='block';
+ if(groll) groll.style.display='block';
+ if(status) status.textContent='Nastavte záběr a vyfoťte se znovu.';
+}
+function selfieFileName(){
+ const s=getState();
+ const team=(s?.team || 'tym').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase() || 'tym';
+ return `grollova-zlata-stopa-selfie-${team}.png`;
+}
+async function downloadGrollSelfie(){
+ if(!selfieLastBlob){ toast('Nejdřív se vyfoťte.'); return; }
+ const url=URL.createObjectURL(selfieLastBlob);
+ const a=document.createElement('a');
+ a.href=url;
+ a.download=selfieFileName();
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function shareGrollSelfie(){
+ if(!selfieLastBlob){ toast('Nejdřív se vyfoťte.'); return; }
+ const file=new File([selfieLastBlob], selfieFileName(), {type:'image/png'});
+ const text='Dokončili jsme Grollovu zlatou stopu v Plzni.';
+ try{
+  if(navigator.canShare?.({files:[file]}) && navigator.share){
+   await navigator.share({title:'Grollova zlatá stopa', text, files:[file]});
+   addLog('selfie_shared');
+   return;
+  }
+  await downloadGrollSelfie();
+  toast('Fotka se stáhla. Můžete ji nahrát na sociální sítě.');
+ }catch(e){
+  toast('Sdílení se nepodařilo. Zkuste fotku stáhnout.');
+ }
+}
+
 function exportData(){ const blob=new Blob([JSON.stringify({state:getState(),log:adminLog(),leaderboard:JSON.parse(localStorage.getItem('grollLeaderboard.v1')||'[]')},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grollova-cesta-export.json'; a.click(); }
 function certificateData(){
  const s=getState();
@@ -1594,7 +1776,17 @@ function openMenu(){
  </div>`, false);
 }
 function modal(html, showClose=true){ closeModal(); const d=document.createElement('div'); d.className='modal-back'; d.innerHTML=`<div class="modal">${html}${showClose?`<button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`:''}</div>`; d.addEventListener('click',e=>{ if(e.target===d && showClose) closeModal(); }); document.body.appendChild(d); }
-function closeModal(){ document.querySelectorAll('.modal-back').forEach(x=>x.remove()); }
+function closeModal(){ stopSelfieCamera(); document.querySelectorAll('.modal-back').forEach(x=>x.remove()); }
+Object.assign(window, {
+ openReviewModal,
+ openReviewTarget,
+ openSelfieBooth,
+ updateSelfieOverlay,
+ captureGrollSelfie,
+ retakeGrollSelfie,
+ shareGrollSelfie,
+ downloadGrollSelfie
+});
 let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ const s=getState(); const el=$('#timer'); if(s&&el) el.textContent=fmtTime((s.finishTime||now())-s.startTime);}; tick(); timerInt=setInterval(tick,1000); }
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
