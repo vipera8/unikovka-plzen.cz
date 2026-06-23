@@ -42,6 +42,7 @@ function requireAdmin_(e,fn){ if(!adminPassword_() || String(e.parameter.adminPa
 function normalize_(v){ return String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,''); }
 function parseJson_(v,f){ try{return JSON.parse(String(v||''));}catch(e){return f;} }
 function mediaTypeFromName_(name){ const ext=String(name||'').split('.').pop().toLowerCase(); if(ext==='jpg'||ext==='jpeg') return 'image/jpeg'; if(ext==='png') return 'image/png'; if(ext==='webp') return 'image/webp'; return 'application/octet-stream'; }
+function czDateTime_(){ return Utilities.formatDate(new Date(), 'Europe/Prague', 'dd.MM.yyyy HH:mm:ss'); }
 
 function stationSecret_(id){ return rows_(SHEETS.secrets).find(r=>Number(r.stationId)===Number(id)); }
 function secretImage_(name){ const target=String(name||'').trim(); if(!target) return null; return rows_(SHEETS.secretImages).find(r=>String(r.fileName||'').trim()===target) || null; }
@@ -116,7 +117,7 @@ function adminStationData_(e){
 function saveLead_(e){
   const sh=getSheet_(SHEETS.leads,HEADERS.leads); const payloadText=String(e.parameter.payload||'{}'); const p=parseJson_(payloadText,{});
   const type=String(e.parameter.type||'kontakt'); const name=String(p['Jméno a příjmení']||p['Jméno objednatele']||p['Kontaktní osoba']||p['Jméno']||p['Název firmy']||'');
-  const email=String(p['E-mail']||''), phone=String(p['Telefon']||''); sh.appendRow([new Date().toISOString(),type,name,email,phone,payloadText,'new']);
+  const email=String(p['E-mail']||''), phone=String(p['Telefon']||''); sh.appendRow([czDateTime_(),type,name,email,phone,payloadText,'new']);
   if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) MailApp.sendEmail({to:LEAD_NOTIFICATION_EMAIL,subject:'Hravá Plzeň - '+type,body:Object.keys(p).map(k=>k+': '+p[k]).join('\n')});
   return json_({ok:true},e);
 }
