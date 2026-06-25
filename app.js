@@ -508,7 +508,7 @@ function introPanel(st, firstScreen=false, intro=''){
   : `<p class="small muted">Úvodní audio pro tuto zastávku zatím chybí.</p>`;
  const extraTitle = st.introImageTitle ? `<div class="intro-image-title">${escapeHtml(st.introImageTitle)}</div>` : '';
  const extraImage = st.introImage ? `<figure class="intro-image-wrap"><img class="intro-inline-image" src="assets/images/${encodeURI(st.introImage)}" alt="${escapeHtml(st.introImageTitle || st.title)}" loading="lazy" onerror="this.closest('.intro-image-wrap').style.display='none'"></figure>` : '';
- return `<div class="accordion intro-accordion"><button class="acc-head" onclick="toggleAcc(this)">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
+ return `<div class="accordion intro-accordion"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
 }
 function renderHintContent(hint){
  if(typeof hint === 'string') return ptxt(hint);
@@ -758,6 +758,11 @@ function playUnlockFx(){
   osc.start();
   osc.stop(ctx.currentTime + 0.15);
  }catch(e){}
+}
+function markIntro(id){
+ const s=getState();
+ if(!s || s.finished || Number(s.currentStation)!==Number(id)) return;
+ addLog('intro_opened',{station:id});
 }
 function markMore(id){ addLog('more_opened',{station:id}); }
 function toggleAcc(btn){ btn.closest('.accordion').classList.toggle('open'); }
@@ -1107,6 +1112,7 @@ function adminEventName(r){
   hint_opened:'Otevřena nápověda',
   solution_opened:'Otevřeno řešení',
   solution_available:'Zpřístupněno řešení',
+  intro_opened:'Otevřeno „Úvod a zadání“',
   more_opened:'Otevřeno „Chci vědět víc“',
   code_success:'Správný app-kód',
   station_completed:'Správný app-kód',
@@ -1553,9 +1559,9 @@ function openSelfieBooth(){
    <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
   </div>
   <div class="selfie-controls">
-   <label>Velikost Grolla <input id="selfieSize" type="range" min="38" max="105" value="72" oninput="updateSelfieOverlay()"></label>
-   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="66" oninput="updateSelfieOverlay()"></label>
-   <label>Výška <input id="selfieY" type="range" min="0" max="55" value="2" oninput="updateSelfieOverlay()"></label>
+   <label>Velikost Grolla <input id="selfieSize" type="range" min="34" max="82" value="54" oninput="updateSelfieOverlay()"></label>
+   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="78" oninput="updateSelfieOverlay()"></label>
+   <label>Výška <input id="selfieY" type="range" min="0" max="55" value="0" oninput="updateSelfieOverlay()"></label>
   </div>
   <div class="grid two selfie-actions">
    <button class="btn" onclick="captureGrollSelfie()">Vyfotit</button>
@@ -1585,9 +1591,9 @@ async function startSelfieCamera(){
 function updateSelfieOverlay(){
  const img=$('#selfieGroll');
  if(!img) return;
- const size=Number($('#selfieSize')?.value || 72);
- const x=Number($('#selfieX')?.value || 66);
- const y=Number($('#selfieY')?.value || 2);
+ const size=Number($('#selfieSize')?.value || 54);
+ const x=Number($('#selfieX')?.value || 78);
+ const y=Number($('#selfieY')?.value || 0);
  img.style.height=size+'%';
  img.style.left=x+'%';
  img.style.bottom=y+'%';
@@ -1600,15 +1606,15 @@ async function captureGrollSelfie(){
  canvas.height=portrait ? 1440 : 1080;
  const ctx=canvas.getContext('2d');
  ctx.save();
- ctx.filter='sepia(.55) contrast(1.07) saturate(.86)';
+ ctx.filter='sepia(.68) contrast(1.1) saturate(.74) brightness(1.05)';
  ctx.translate(canvas.width,0);
  ctx.scale(-1,1);
  drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
  ctx.restore();
  const overlay=await loadImage(SELFIE_GROLL_SRC);
- const size=Number($('#selfieSize')?.value || 72)/100;
- const xPct=Number($('#selfieX')?.value || 66)/100;
- const yPct=Number($('#selfieY')?.value || 2)/100;
+ const size=Number($('#selfieSize')?.value || 54)/100;
+ const xPct=Number($('#selfieX')?.value || 78)/100;
+ const yPct=Number($('#selfieY')?.value || 0)/100;
  const gh=canvas.height*size;
  const gw=gh*(overlay.naturalWidth||overlay.width)/(overlay.naturalHeight||overlay.height);
  const gx=canvas.width*xPct-gw/2;

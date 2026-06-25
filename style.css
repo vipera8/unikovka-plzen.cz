@@ -1499,7 +1499,7 @@
 }
 .selfie-video{
   transform:scaleX(-1);
-  filter:sepia(.42) contrast(1.05) saturate(.9);
+  filter:sepia(.68) contrast(1.1) saturate(.74) brightness(1.05);
 }
 .selfie-canvas{
   display:none;
@@ -1512,10 +1512,10 @@
   position:absolute;
   z-index:2;
   transform:translateX(-50%);
-  height:72%;
+  height:54%;
   max-width:none;
   pointer-events:none;
-  filter:sepia(.18) drop-shadow(0 12px 18px rgba(0,0,0,.35));
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));
 }
 .selfie-controls{
   display:grid;
