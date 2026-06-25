@@ -1555,7 +1555,7 @@ function openSelfieBooth(){
   <div class="selfie-stage" id="selfieStage">
    <video id="selfieVideo" class="selfie-video" autoplay playsinline muted></video>
    <img id="selfieGroll" class="selfie-groll" src="${SELFIE_GROLL_SRC}" alt="Josef Groll připíjí pivem">
-   <div class="selfie-frame-preview" aria-hidden="true">
+   <div class="selfie-frame-preview" aria-hidden="true" style="position:absolute;inset:0;z-index:4;pointer-events:none;border:14px solid rgba(60,30,10,.88);box-shadow:inset 0 0 0 4px rgba(245,197,100,.72), inset 0 0 34px rgba(35,18,7,.45)">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
      <path class="selfie-gold-line" d="M62 18 C92 26, 73 44, 93 58 C72 70, 86 84, 58 92"/>
      <path class="selfie-gold-dots" d="M62 20 L70 33 L77 45 L86 57 L78 70 L72 82 L58 92"/>
@@ -1565,7 +1565,7 @@ function openSelfieBooth(){
    </div>
    <canvas id="selfieCanvas" class="selfie-canvas" width="1080" height="1440"></canvas>
    <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
-   <div class="selfie-brand-strip"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
+   <div class="selfie-brand-strip" style="position:absolute;z-index:5;left:0;right:0;top:0;bottom:auto;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(35,18,7,.72);border-bottom:2px solid rgba(245,205,126,.72);border-top:0;color:#f8dfaa;font-family:Georgia,'Times New Roman',serif;font-size:13px;pointer-events:none"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
    <button id="selfieCaptureBtn" class="selfie-capture-btn" type="button" onclick="captureGrollSelfie()">Vyfotit</button>
   </div>
   <div class="selfie-controls">
@@ -1578,7 +1578,7 @@ function openSelfieBooth(){
    <button class="btn secondary" onclick="shareGrollSelfie()">Sdílet fotku</button>
    <button class="btn ghost" onclick="downloadGrollSelfie()">Stáhnout fotku</button>
   </div>
-  <p id="selfieStatus" class="small muted"></p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+  <p id="selfieStatus" class="small muted">Selfie modul v141</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
  setTimeout(startSelfieCamera, 50);
 }
 async function startSelfieCamera(){
@@ -1595,16 +1595,21 @@ async function startSelfieCamera(){
   selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
   if(video){
    video.srcObject=selfieStream;
-   video.onloadedmetadata=async ()=>{
+   video.onloadedmetadata=()=>updateSelfieStageShape();
+   video.onplaying=()=>{
     updateSelfieStageShape();
     stage?.classList.add('camera-ready');
-    try{ await video.play(); }catch(err){}
    };
+   try{
+    await video.play();
+    updateSelfieStageShape();
+    stage?.classList.add('camera-ready');
+   }catch(err){}
   }
-  if(status) status.textContent='Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
+  if(status) status.textContent='Selfie modul v141 · Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
  }catch(e){
   stage?.classList.remove('camera-ready');
-  if(status) status.textContent='Fotoaparát se nepodařilo spustit. Zkontrolujte oprávnění prohlížeče.';
+  if(status) status.textContent='Selfie modul v141 · Fotoaparát se nepodařilo spustit. Zkontrolujte oprávnění prohlížeče.';
  }
 }
 function updateSelfieStageShape(){
