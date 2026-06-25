@@ -1561,8 +1561,8 @@ function openSelfieBooth(){
    <button id="selfieCaptureBtn" class="selfie-capture-btn" type="button" onclick="captureGrollSelfie()">Vyfotit</button>
   </div>
   <div class="selfie-controls">
-   <label>Velikost Grolla <input id="selfieSize" type="range" min="22" max="64" value="34" oninput="updateSelfieOverlay()"></label>
-   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="82" oninput="updateSelfieOverlay()"></label>
+   <label>Velikost Grolla <input id="selfieSize" type="range" min="18" max="54" value="28" oninput="updateSelfieOverlay()"></label>
+   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="88" oninput="updateSelfieOverlay()"></label>
    <label>Výška <input id="selfieY" type="range" min="0" max="55" value="0" oninput="updateSelfieOverlay()"></label>
   </div>
   <div class="grid two selfie-actions">
@@ -1600,8 +1600,8 @@ function updateSelfieStageShape(){
 function updateSelfieOverlay(){
  const img=$('#selfieGroll');
  if(!img) return;
- const size=Number($('#selfieSize')?.value || 34);
- const x=Number($('#selfieX')?.value || 82);
+ const size=Number($('#selfieSize')?.value || 28);
+ const x=Number($('#selfieX')?.value || 88);
  const y=Number($('#selfieY')?.value || 0);
  img.style.height=size+'%';
  img.style.left=x+'%';
@@ -1627,8 +1627,8 @@ async function captureGrollSelfie(){
  drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
  ctx.restore();
  const overlay=await loadImage(SELFIE_GROLL_SRC);
- const size=Number($('#selfieSize')?.value || 34)/100;
- const xPct=Number($('#selfieX')?.value || 82)/100;
+ const size=Number($('#selfieSize')?.value || 28)/100;
+ const xPct=Number($('#selfieX')?.value || 88)/100;
  const yPct=Number($('#selfieY')?.value || 0)/100;
  const gh=canvas.height*size;
  const gw=gh*(overlay.naturalWidth||overlay.width)/(overlay.naturalHeight||overlay.height);
@@ -1690,23 +1690,59 @@ function drawSelfieFinish(ctx, canvas){
  ctx.fillRect(0,0,canvas.width,canvas.height);
  ctx.fillStyle='rgba(255,236,184,.10)';
  ctx.fillRect(0,0,canvas.width,canvas.height);
- const border=Math.max(22,canvas.width*.022);
- ctx.strokeStyle='rgba(71,38,14,.9)';
- ctx.lineWidth=border;
- ctx.strokeRect(border/2,border/2,canvas.width-border,canvas.height-border);
- ctx.strokeStyle='rgba(245,205,126,.62)';
- ctx.lineWidth=Math.max(5,canvas.width*.006);
- ctx.strokeRect(border*1.15,border*1.15,canvas.width-border*2.3,canvas.height-border*2.3);
- const labelH=Math.round(canvas.height*.052);
+ drawGrollPostcardFrame(ctx, canvas);
+ const labelH=Math.round(canvas.height*.064);
  ctx.fillStyle='rgba(35,18,7,.72)';
- ctx.fillRect(0,canvas.height-labelH,canvas.width,labelH);
+ ctx.fillRect(0,0,canvas.width,labelH);
  ctx.fillStyle='rgba(245,205,126,.82)';
- ctx.fillRect(0,canvas.height-labelH,canvas.width,Math.max(3,canvas.height*.004));
+ ctx.fillRect(0,labelH-Math.max(3,canvas.height*.004),canvas.width,Math.max(3,canvas.height*.004));
  ctx.fillStyle='#f8dfaa';
  ctx.textAlign='center';
  ctx.textBaseline='middle';
  ctx.font=`700 ${Math.round(canvas.width*.025)}px Georgia, "Times New Roman", serif`;
- ctx.fillText('Grollova zlatá stopa · Hravá Plzeň', canvas.width/2, canvas.height-labelH/2);
+ ctx.fillText('Grollova zlatá stopa · Hravá Plzeň', canvas.width/2, labelH/2);
+}
+function drawGrollPostcardFrame(ctx, canvas){
+ const w=canvas.width, h=canvas.height;
+ const border=Math.max(24,w*.024);
+ ctx.save();
+ ctx.strokeStyle='rgba(60,30,10,.95)';
+ ctx.lineWidth=border;
+ ctx.strokeRect(border/2,border/2,w-border,h-border);
+ ctx.strokeStyle='rgba(245,197,100,.78)';
+ ctx.lineWidth=Math.max(5,w*.006);
+ ctx.strokeRect(border*1.08,border*1.08,w-border*2.16,h-border*2.16);
+ ctx.strokeStyle='rgba(255,216,128,.72)';
+ ctx.lineWidth=Math.max(4,w*.004);
+ ctx.beginPath();
+ const startX=w*.62, startY=h*.18;
+ ctx.moveTo(startX,startY);
+ ctx.bezierCurveTo(w*.92,h*.26,w*.74,h*.44,w*.93,h*.58);
+ ctx.bezierCurveTo(w*.72,h*.70,w*.86,h*.84,w*.58,h*.92);
+ ctx.stroke();
+ for(let i=0;i<7;i++){
+  const t=i/6;
+  const x=w*(.62+.24*Math.sin(t*Math.PI*1.7));
+  const y=h*(.2+.68*t);
+  ctx.beginPath();
+  ctx.arc(x,y,Math.max(5,w*.006),0,Math.PI*2);
+  ctx.stroke();
+ }
+ ctx.strokeStyle='rgba(255,216,128,.46)';
+ ctx.lineWidth=Math.max(3,w*.003);
+ const archX=w*.055, archY=h*.09, archW=w*.105, archH=h*.075;
+ ctx.strokeRect(archX,archY+archH*.35,archW,archH*.65);
+ ctx.beginPath();
+ ctx.arc(archX+archW/2,archY+archH*.35,archW*.38,Math.PI,Math.PI*2);
+ ctx.stroke();
+ const towerX=w*.19, towerY=h*.06;
+ ctx.beginPath();
+ ctx.moveTo(towerX,towerY+h*.095);
+ ctx.lineTo(towerX+w*.025,towerY);
+ ctx.lineTo(towerX+w*.05,towerY+h*.095);
+ ctx.stroke();
+ ctx.strokeRect(towerX+w*.012,towerY+h*.095,w*.026,h*.06);
+ ctx.restore();
 }
 function retakeGrollSelfie(){
  const video=$('#selfieVideo'), groll=$('#selfieGroll'), result=$('#selfieResult'), status=$('#selfieStatus'), captureBtn=$('#selfieCaptureBtn');
