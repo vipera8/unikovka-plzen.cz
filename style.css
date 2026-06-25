@@ -1483,10 +1483,17 @@
   position:relative;
   overflow:hidden;
   aspect-ratio:3/4;
+  max-height:min(62dvh,640px);
+  width:100%;
+  margin:0 auto;
   border-radius:22px;
   background:#170d05;
   border:1px solid rgba(43,24,10,.22);
   box-shadow:0 12px 28px rgba(45,24,8,.18);
+}
+.selfie-stage.landscape{
+  aspect-ratio:4/3;
+  max-height:min(58dvh,520px);
 }
 .selfie-video,
 .selfie-canvas,
@@ -1512,15 +1519,34 @@
   position:absolute;
   z-index:2;
   transform:translateX(-50%);
-  height:54%;
+  height:38%;
   max-width:none;
   pointer-events:none;
   filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));
 }
+.selfie-capture-btn{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:132px;
+  border:0;
+  border-radius:999px;
+  padding:12px 20px;
+  background:rgba(111,61,18,.92);
+  color:#fff5d6;
+  font-weight:900;
+  box-shadow:0 10px 26px rgba(0,0,0,.34);
+  cursor:pointer;
+}
 .selfie-controls{
   display:grid;
   gap:10px;
-  margin:14px 0;
+  margin:12px 0;
 }
 .selfie-controls label{
   display:grid;
@@ -1540,6 +1566,22 @@
   .share-grid{grid-template-columns:1fr}
   .share-btn.native{grid-column:auto}
   .selfie-actions{grid-template-columns:1fr}
+}
+@media(orientation:landscape) and (max-height:560px){
+  .selfie-stage,
+  .selfie-stage.landscape{
+    max-height:56dvh;
+  }
+  .selfie-controls{
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .selfie-controls label{
+    font-size:12px;
+  }
+  .selfie-actions{
+    grid-template-columns:repeat(3,1fr);
+  }
 }
 
 /* v93 soft fades for presentation images */
