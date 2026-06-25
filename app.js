@@ -1555,7 +1555,7 @@ function openSelfieBooth(){
   <div class="selfie-stage" id="selfieStage">
    <video id="selfieVideo" class="selfie-video" autoplay playsinline muted></video>
    <img id="selfieGroll" class="selfie-groll" src="${SELFIE_GROLL_SRC}" alt="Josef Groll připíjí pivem">
-   <div class="selfie-frame-preview" aria-hidden="true" style="position:absolute;inset:0;z-index:4;pointer-events:none;border:14px solid rgba(60,30,10,.88);box-shadow:inset 0 0 0 4px rgba(245,197,100,.72), inset 0 0 34px rgba(35,18,7,.45)">
+   <div class="selfie-frame-preview" aria-hidden="true">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
      <path class="selfie-gold-line" d="M62 18 C92 26, 73 44, 93 58 C72 70, 86 84, 58 92"/>
      <path class="selfie-gold-dots" d="M62 20 L70 33 L77 45 L86 57 L78 70 L72 82 L58 92"/>
@@ -1565,13 +1565,13 @@ function openSelfieBooth(){
    </div>
    <canvas id="selfieCanvas" class="selfie-canvas" width="1080" height="1440"></canvas>
    <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
-   <div class="selfie-brand-strip" style="position:absolute;z-index:5;left:0;right:0;top:0;bottom:auto;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(35,18,7,.72);border-bottom:2px solid rgba(245,205,126,.72);border-top:0;color:#f8dfaa;font-family:Georgia,'Times New Roman',serif;font-size:13px;pointer-events:none"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
+   <div class="selfie-brand-strip"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
    <button id="selfieStartBtn" class="selfie-start-btn" type="button" onclick="startSelfieCamera()">Spustit fotoaparát</button>
    <button id="selfieCaptureBtn" class="selfie-capture-btn" type="button" onclick="captureGrollSelfie()">Vyfotit</button>
   </div>
   <div class="selfie-controls">
-   <label>Velikost Grolla <input id="selfieSize" type="range" min="18" max="54" value="28" oninput="updateSelfieOverlay()"></label>
-   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="88" oninput="updateSelfieOverlay()"></label>
+   <label>Velikost Grolla <input id="selfieSize" type="range" min="18" max="54" value="30" oninput="updateSelfieOverlay()"></label>
+   <label>Posun do stran <input id="selfieX" type="range" min="0" max="100" value="72" oninput="updateSelfieOverlay()"></label>
    <label>Výška <input id="selfieY" type="range" min="0" max="55" value="0" oninput="updateSelfieOverlay()"></label>
   </div>
   <div class="grid two selfie-actions">
@@ -1579,7 +1579,7 @@ function openSelfieBooth(){
    <button class="btn secondary" onclick="shareGrollSelfie()">Sdílet fotku</button>
    <button class="btn ghost" onclick="downloadGrollSelfie()">Stáhnout fotku</button>
   </div>
-  <p id="selfieStatus" class="small muted">Selfie modul v142</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+  <p id="selfieStatus" class="small muted"></p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
  setTimeout(startSelfieCamera, 50);
 }
 async function startSelfieCamera(){
@@ -1594,7 +1594,7 @@ async function startSelfieCamera(){
  }
  try{
   if(startBtn) startBtn.disabled=true;
-  if(status) status.textContent='Selfie modul v142 · Spouštím fotoaparát...';
+  if(status) status.textContent='Spouštím fotoaparát...';
   stopSelfieCamera();
   selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
   if(video){
@@ -1611,11 +1611,11 @@ async function startSelfieCamera(){
    stage?.classList.add('camera-ready');
   }
   if(startBtn) startBtn.style.display='none';
-  if(status) status.textContent='Selfie modul v142 · Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
+  if(status) status.textContent='Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
  }catch(e){
   stage?.classList.remove('camera-ready');
   if(startBtn){ startBtn.disabled=false; startBtn.style.display='inline-flex'; }
-  if(status) status.textContent='Selfie modul v142 · Fotoaparát se nepodařilo spustit. Klepněte na Spustit fotoaparát nebo zkontrolujte oprávnění prohlížeče.';
+  if(status) status.textContent='Fotoaparát se nepodařilo spustit. Klepněte na Spustit fotoaparát nebo zkontrolujte oprávnění prohlížeče.';
  }
 }
 function updateSelfieStageShape(){
@@ -1626,8 +1626,8 @@ function updateSelfieStageShape(){
 function updateSelfieOverlay(){
  const img=$('#selfieGroll');
  if(!img) return;
- const size=Number($('#selfieSize')?.value || 28);
- const x=Number($('#selfieX')?.value || 88);
+ const size=Number($('#selfieSize')?.value || 30);
+ const x=Number($('#selfieX')?.value || 72);
  const y=Number($('#selfieY')?.value || 0);
  img.style.height=size+'%';
  img.style.left=x+'%';
@@ -1653,8 +1653,8 @@ async function captureGrollSelfie(){
  drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
  ctx.restore();
  const overlay=await loadImage(SELFIE_GROLL_SRC);
- const size=Number($('#selfieSize')?.value || 28)/100;
- const xPct=Number($('#selfieX')?.value || 88)/100;
+ const size=Number($('#selfieSize')?.value || 30)/100;
+ const xPct=Number($('#selfieX')?.value || 72)/100;
  const yPct=Number($('#selfieY')?.value || 0)/100;
  const gh=canvas.height*size;
  const gw=gh*(overlay.naturalWidth||overlay.width)/(overlay.naturalHeight||overlay.height);
@@ -1666,7 +1666,7 @@ async function captureGrollSelfie(){
  ctx.drawImage(overlay,gx,gy,gw,gh);
  ctx.restore();
  applyAntiquePhoto(ctx, canvas);
- drawSelfieFinish(ctx, canvas);
+ await drawSelfieFinish(ctx, canvas);
  selfieLastBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
  if(result && selfieLastBlob){
   result.src=URL.createObjectURL(selfieLastBlob);
@@ -1699,7 +1699,7 @@ function applyAntiquePhoto(ctx, canvas){
  }
  ctx.putImageData(image,0,0);
 }
-function drawSelfieFinish(ctx, canvas){
+async function drawSelfieFinish(ctx, canvas){
  ctx.save();
  ctx.globalCompositeOperation='multiply';
  ctx.fillStyle='rgba(196,139,72,.16)';
@@ -1716,7 +1716,7 @@ function drawSelfieFinish(ctx, canvas){
  ctx.fillRect(0,0,canvas.width,canvas.height);
  ctx.fillStyle='rgba(255,236,184,.10)';
  ctx.fillRect(0,0,canvas.width,canvas.height);
- drawGrollPostcardFrame(ctx, canvas);
+ await drawGrollPostcardFrame(ctx, canvas);
  const labelH=Math.round(canvas.height*.064);
  ctx.fillStyle='rgba(35,18,7,.72)';
  ctx.fillRect(0,0,canvas.width,labelH);
@@ -1728,10 +1728,26 @@ function drawSelfieFinish(ctx, canvas){
  ctx.font=`700 ${Math.round(canvas.width*.025)}px Georgia, "Times New Roman", serif`;
  ctx.fillText('Grollova zlatá stopa · Hravá Plzeň', canvas.width/2, labelH/2);
 }
-function drawGrollPostcardFrame(ctx, canvas){
+async function drawGrollPostcardFrame(ctx, canvas){
  const w=canvas.width, h=canvas.height;
  const border=Math.max(24,w*.024);
  ctx.save();
+ try{
+  const intro=await loadImage('assets/images/groll_uvod.jpg');
+  const headerH=h*.13;
+  ctx.globalAlpha=.58;
+  drawCover(ctx, intro, 0, 0, w, headerH);
+  ctx.globalAlpha=.28;
+  drawCover(ctx, intro, 0, h-border*2.8, w, border*2.8);
+  ctx.globalAlpha=.24;
+  ctx.drawImage(intro, 0, 0, intro.naturalWidth*.34, intro.naturalHeight, 0, 0, border*3.2, h);
+  ctx.drawImage(intro, intro.naturalWidth*.58, 0, intro.naturalWidth*.42, intro.naturalHeight, w-border*3.2, 0, border*3.2, h);
+ }catch(e){}
+ const topShade=ctx.createLinearGradient(0,0,0,h*.16);
+ topShade.addColorStop(0,'rgba(20,10,4,.72)');
+ topShade.addColorStop(1,'rgba(20,10,4,0)');
+ ctx.fillStyle=topShade;
+ ctx.fillRect(0,0,w,h*.16);
  ctx.strokeStyle='rgba(60,30,10,.95)';
  ctx.lineWidth=border;
  ctx.strokeRect(border/2,border/2,w-border,h-border);
