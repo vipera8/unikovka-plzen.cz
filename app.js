@@ -1555,6 +1555,14 @@ function openSelfieBooth(){
   <div class="selfie-stage" id="selfieStage">
    <video id="selfieVideo" class="selfie-video" autoplay playsinline muted></video>
    <img id="selfieGroll" class="selfie-groll" src="${SELFIE_GROLL_SRC}" alt="Josef Groll připíjí pivem">
+   <div class="selfie-frame-preview" aria-hidden="true">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+     <path class="selfie-gold-line" d="M62 18 C92 26, 73 44, 93 58 C72 70, 86 84, 58 92"/>
+     <path class="selfie-gold-dots" d="M62 20 L70 33 L77 45 L86 57 L78 70 L72 82 L58 92"/>
+     <path class="selfie-landmark" d="M5 15 H15 V23 H5 Z M7 15 A3 3 0 0 1 13 15"/>
+     <path class="selfie-landmark" d="M20 22 L23 9 L26 22 M22 22 V29 H24 V22"/>
+    </svg>
+   </div>
    <canvas id="selfieCanvas" class="selfie-canvas" width="1080" height="1440"></canvas>
    <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
    <div class="selfie-brand-strip"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
@@ -1576,19 +1584,26 @@ function openSelfieBooth(){
 async function startSelfieCamera(){
  const status=$('#selfieStatus');
  const video=$('#selfieVideo');
+ const stage=$('#selfieStage');
  updateSelfieOverlay();
  if(!navigator.mediaDevices?.getUserMedia){
   if(status) status.textContent='Fotoaparát v tomto prohlížeči není dostupný.';
   return;
  }
  try{
-  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+  stopSelfieCamera();
+  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
   if(video){
    video.srcObject=selfieStream;
-   video.onloadedmetadata=()=>updateSelfieStageShape();
+   video.onloadedmetadata=async ()=>{
+    updateSelfieStageShape();
+    stage?.classList.add('camera-ready');
+    try{ await video.play(); }catch(err){}
+   };
   }
   if(status) status.textContent='Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
  }catch(e){
+  stage?.classList.remove('camera-ready');
   if(status) status.textContent='Fotoaparát se nepodařilo spustit. Zkontrolujte oprávnění prohlížeče.';
  }
 }
