@@ -1566,6 +1566,7 @@ function openSelfieBooth(){
    <canvas id="selfieCanvas" class="selfie-canvas" width="1080" height="1440"></canvas>
    <img id="selfieResult" class="selfie-result" alt="Historická selfie s Grollem">
    <div class="selfie-brand-strip" style="position:absolute;z-index:5;left:0;right:0;top:0;bottom:auto;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(35,18,7,.72);border-bottom:2px solid rgba(245,205,126,.72);border-top:0;color:#f8dfaa;font-family:Georgia,'Times New Roman',serif;font-size:13px;pointer-events:none"><span>Grollova zlatá stopa</span><b>Hravá Plzeň</b></div>
+   <button id="selfieStartBtn" class="selfie-start-btn" type="button" onclick="startSelfieCamera()">Spustit fotoaparát</button>
    <button id="selfieCaptureBtn" class="selfie-capture-btn" type="button" onclick="captureGrollSelfie()">Vyfotit</button>
   </div>
   <div class="selfie-controls">
@@ -1578,38 +1579,43 @@ function openSelfieBooth(){
    <button class="btn secondary" onclick="shareGrollSelfie()">Sdílet fotku</button>
    <button class="btn ghost" onclick="downloadGrollSelfie()">Stáhnout fotku</button>
   </div>
-  <p id="selfieStatus" class="small muted">Selfie modul v141</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+  <p id="selfieStatus" class="small muted">Selfie modul v142</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
  setTimeout(startSelfieCamera, 50);
 }
 async function startSelfieCamera(){
  const status=$('#selfieStatus');
  const video=$('#selfieVideo');
  const stage=$('#selfieStage');
+ const startBtn=$('#selfieStartBtn');
  updateSelfieOverlay();
  if(!navigator.mediaDevices?.getUserMedia){
   if(status) status.textContent='Fotoaparát v tomto prohlížeči není dostupný.';
   return;
  }
  try{
+  if(startBtn) startBtn.disabled=true;
+  if(status) status.textContent='Selfie modul v142 · Spouštím fotoaparát...';
   stopSelfieCamera();
-  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
   if(video){
    video.srcObject=selfieStream;
-   video.onloadedmetadata=()=>updateSelfieStageShape();
+   video.onloadedmetadata=()=>{
+    updateSelfieStageShape();
+    stage?.classList.add('camera-ready');
+   };
    video.onplaying=()=>{
     updateSelfieStageShape();
     stage?.classList.add('camera-ready');
    };
-   try{
-    await video.play();
-    updateSelfieStageShape();
-    stage?.classList.add('camera-ready');
-   }catch(err){}
+   try{ await video.play(); }catch(err){}
+   stage?.classList.add('camera-ready');
   }
-  if(status) status.textContent='Selfie modul v141 · Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
+  if(startBtn) startBtn.style.display='none';
+  if(status) status.textContent='Selfie modul v142 · Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
  }catch(e){
   stage?.classList.remove('camera-ready');
-  if(status) status.textContent='Selfie modul v141 · Fotoaparát se nepodařilo spustit. Zkontrolujte oprávnění prohlížeče.';
+  if(startBtn){ startBtn.disabled=false; startBtn.style.display='inline-flex'; }
+  if(status) status.textContent='Selfie modul v142 · Fotoaparát se nepodařilo spustit. Klepněte na Spustit fotoaparát nebo zkontrolujte oprávnění prohlížeče.';
  }
 }
 function updateSelfieStageShape(){

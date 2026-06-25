@@ -1619,6 +1619,28 @@
   box-shadow:0 10px 26px rgba(0,0,0,.34);
   cursor:pointer;
 }
+.selfie-start-btn{
+  position:absolute;
+  z-index:7;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  min-width:180px;
+  border:0;
+  border-radius:999px;
+  padding:12px 20px;
+  background:rgba(111,61,18,.95);
+  color:#fff5d6;
+  font-weight:900;
+  box-shadow:0 10px 26px rgba(0,0,0,.34);
+  cursor:pointer;
+}
+.selfie-stage:not(.camera-ready) .selfie-start-btn{
+  display:inline-flex;
+}
 .selfie-controls{
   display:grid;
   gap:10px;
