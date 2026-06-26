@@ -1527,11 +1527,11 @@ function openReviewModal(){
  const google=reviewTarget('google');
  const facebook=reviewTarget('facebook');
  addLog('review_modal_opened');
- modal(`<h2>Jak se vám hrálo?</h2><p>Budeme moc rádi za pravdivé hodnocení. Pomůže dalším hráčům rozhodnout se, jestli se po Grollově stopě vydají také.</p><div class="review-actions">
+ modal(`<h2>Jak se vám hrálo?</h2><p>Líbila se vám Grollova zlatá stopa? Budeme moc rádi, když nám pomůžete krátkou pozitivní recenzí. Díky ní se o hře dozví další týmy, které hledají originální zážitek v Plzni.</p><p class="small muted">Pokud nám chcete napsat připomínku nebo nápad na vylepšení, pošlete nám prosím zprávu přímo e-mailem. Každou zpětnou vazbu čteme a pomáhá nám hru dál ladit.</p><div class="review-actions">
   <button class="btn" onclick="openReviewTarget('google')" ${google?'':'disabled'}>Ohodnotit na Googlu</button>
   <button class="btn secondary" onclick="openReviewTarget('facebook')" ${facebook?'':'disabled'}>Ohodnotit na Facebooku</button>
   <a class="btn ghost review-mail" href="mailto:hravaplzen@gmail.com?subject=Zpětná vazba ke Grollově zlaté stopě">Poslat zpětnou vazbu e-mailem</a>
- </div>${google||facebook?'':'<p class="small muted">Odkaz na veřejné hodnocení doplníme po vytvoření firemního profilu nebo stránky s recenzemi.</p>'}<p class="small muted">Hodnocení je dobrovolné. Nejvíc nám pomůže krátká upřímná zkušenost: co se vám líbilo, pro koho byste hru doporučili a jestli všechno fungovalo bez potíží.</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
+ </div>${google||facebook?'':'<p class="small muted">Odkaz na veřejné hodnocení doplníme po vytvoření firemního profilu nebo stránky s recenzemi.</p>'}<p class="small muted">Hodnocení je dobrovolné. Nejvíc nám pomůže pár vět o tom, co se vám líbilo a komu byste hru doporučili.</p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
 }
 function openReviewTarget(kind){
  const url=reviewTarget(kind);
