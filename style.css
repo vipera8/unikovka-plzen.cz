@@ -1502,6 +1502,12 @@
 }
 .selfie-video{
   z-index:1;
+  inset:auto;
+  left:20.37%;
+  top:26.70%;
+  width:58.43%;
+  height:63.08%;
+  border-radius:26px;
   transform:scaleX(-1);
   filter:sepia(.24) saturate(.78) contrast(1.04) brightness(.98);
 }

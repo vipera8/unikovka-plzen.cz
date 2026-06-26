@@ -1543,6 +1543,7 @@ function openReviewTarget(kind){
 let selfieStream=null;
 let selfieLastBlob=null;
 const SELFIE_FRAME_SRC='assets/images/selfie_frame_landscape.png';
+const SELFIE_FRAME_WINDOW={x:295,y:290,w:846,h:685};
 function stopSelfieCamera(){
  if(selfieStream){
   selfieStream.getTracks().forEach(t=>t.stop());
@@ -1611,11 +1612,13 @@ async function captureGrollSelfie(){
  canvas.width=frame.naturalWidth || frame.width || 1448;
  canvas.height=frame.naturalHeight || frame.height || 1086;
  const ctx=canvas.getContext('2d');
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.fillStyle='#1b0f07';
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+ const cameraRect=scaledSelfieFrameWindow(canvas);
  ctx.save();
  ctx.filter='contrast(1.02) brightness(.98) saturate(.92)';
- ctx.translate(canvas.width,0);
- ctx.scale(-1,1);
- drawCover(ctx, video, 0, 0, canvas.width, canvas.height);
+ drawMirroredCover(ctx, video, cameraRect.x, cameraRect.y, cameraRect.w, cameraRect.h);
  ctx.restore();
  applyAntiquePhoto(ctx, canvas);
  drawSelfieFinish(ctx, canvas);
@@ -1638,6 +1641,23 @@ function drawCover(ctx, source, x, y, w, h){
  const scale=Math.max(w/sw,h/sh);
  const dw=sw*scale, dh=sh*scale;
  ctx.drawImage(source,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+}
+function scaledSelfieFrameWindow(canvas){
+ const sx=canvas.width/1448;
+ const sy=canvas.height/1086;
+ return {
+  x:SELFIE_FRAME_WINDOW.x*sx,
+  y:SELFIE_FRAME_WINDOW.y*sy,
+  w:SELFIE_FRAME_WINDOW.w*sx,
+  h:SELFIE_FRAME_WINDOW.h*sy
+ };
+}
+function drawMirroredCover(ctx, source, x, y, w, h){
+ ctx.save();
+ ctx.translate(x+w, y);
+ ctx.scale(-1, 1);
+ drawCover(ctx, source, 0, 0, w, h);
+ ctx.restore();
 }
 function applyAntiquePhoto(ctx, canvas){
  const image=ctx.getImageData(0,0,canvas.width,canvas.height);
