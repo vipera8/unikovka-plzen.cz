@@ -19,7 +19,7 @@ const saveState = s => { const key=stateKeyForCode(s?.accessCode || activeAccess
 const adminLog = () => readJson(ADMIN_KEY, []);
 const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s); };
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
-const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}`;
+const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}&travelmode=walking`;
 const station = id => DATA.stations[id-1];
 function monitorEndpoint(){ return String(window.GAME_DATA?.gameMonitorEndpoint || window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
 function monitorUrl(action, params={}){
