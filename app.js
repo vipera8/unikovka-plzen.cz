@@ -489,11 +489,14 @@ function renderStation(){ const s=getState(); const st=station(s.currentStation)
 function renderStationSpecial(st,s,hintState){
  if(st.id===1 && !s.diaryUnlocked){
   const intro = st.intro.split('Tlačítko:')[0];
-  return `${stationImage(st, true)}${introPanel(st, true, intro)}<button class="btn" onclick="unlockDiary()">Deník odemčen</button>`;
+  return `${stationImage(st, true)}${introPanel(st, true, intro)}<button class="btn" onclick="unlockDiary()">Deník odemčen</button>${diaryKeyHint()}`;
  }
  let intro = st.intro;
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  return `${stationImage(st, false)}${introPanel(st, false, intro)}${st.id===5?`<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>`:''}<div class="accordion"><button class="acc-head" onclick="toggleAcc(this); markMore(${st.id})">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>${renderHints(st,hintState)}`;
+}
+function diaryKeyHint(){
+ return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Nemůžete najít klíč? <span>⌄</span></button><div class="acc-body">${ptxt('Klíč není schovaný mimo batoh. Prohledejte pečlivě místo, kde byl uložený deník. Některé části batohu drží na suchý zip a mohou skrývat víc, než se na první pohled zdá.')}</div></div>`;
 }
 function currentStationImage(st, firstScreen=false){ return firstScreen ? (st.image || '') : (st.image2 || st.image || ''); }
 function currentIntroAudio(st, firstScreen=false){ return firstScreen ? (st.introAudio || '') : (st.introAudio2 || st.introAudio || ''); }
@@ -1358,6 +1361,7 @@ function adminPreviewDiaryIntro(){
   ${stationImage(st, true)}
   ${introPanel(st, true, intro)}
   <button class="btn" onclick="toast('Toto je jen admin náhled.')">Deník odemčen</button>
+  ${diaryKeyHint()}
   <button class="btn ghost" style="margin-top:14px" onclick="adminPreviewStation(1)">Zobrazit 1/13 po deníku</button>
   <button class="btn ghost" style="margin-top:10px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
