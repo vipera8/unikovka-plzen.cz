@@ -496,7 +496,7 @@ function renderStationSpecial(st,s,hintState){
  return `${stationImage(st, false)}${introPanel(st, false, intro)}${st.id===5?`<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>`:''}<div class="accordion"><button class="acc-head" onclick="toggleAcc(this); markMore(${st.id})">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>${renderHints(st,hintState)}`;
 }
 function diaryKeyHint(){
- return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Nemůžete najít klíč? <span>⌄</span></button><div class="acc-body">${ptxt('Klíč není schovaný mimo batoh. Prohledejte pečlivě místo, kde byl uložený deník. Některé části batohu drží na suchý zip a mohou skrývat víc, než se na první pohled zdá.')}</div></div>`;
+ return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Nemůžete najít klíč? <span>⌄</span></button><div class="acc-body">${ptxt('Klíč je schovaný uvnitř batohu. Prohledejte pečlivě místo, kde byl uložený deník. Některé části batohu drží na suchý zip a mohou skrývat víc, než se na první pohled zdá.')}</div></div>`;
 }
 function currentStationImage(st, firstScreen=false){ return firstScreen ? (st.image || '') : (st.image2 || st.image || ''); }
 function currentIntroAudio(st, firstScreen=false){ return firstScreen ? (st.introAudio || '') : (st.introAudio2 || st.introAudio || ''); }
