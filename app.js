@@ -1196,7 +1196,13 @@ function adminLogHtml(rows){
  return `<h3>Log událostí</h3><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Detail</th></tr>${rows.slice(-80).reverse().map(r=>`<tr><td>${adminDate(r.time)}</td><td>${escapeHtml(adminEventName(r))}</td><td>${adminEventDetail(r)}</td></tr>`).join('')}</table>`;
 }
 function adminStationSelect(){
- return `<div class="admin-card"><h3>Náhled hry</h3><p class="small muted">Otevře obsah tak, jak ho vidí hráči, ale nezmění rozehranou hru.</p><div class="grid two"><button class="btn" onclick="adminPreviewStart()">Úvodní stránka</button>${DATA.stations.map(st=>`<button class="btn secondary" onclick="adminPreviewStation(${st.id})">${st.id}/13 ${escapeHtml(st.title)}</button>`).join('')}<button class="btn" onclick="adminPreviewFinish()">Závěrečná stránka</button></div></div>`;
+ const stationButtons=DATA.stations.map(st=>{
+  if(st.id===1){
+   return `<button class="btn secondary" onclick="adminPreviewDiaryIntro()">1/13 ${escapeHtml(st.title)} - první obrazovka</button><button class="btn secondary" onclick="adminPreviewStation(${st.id})">1/13 ${escapeHtml(st.title)} - po deníku</button>`;
+  }
+  return `<button class="btn secondary" onclick="adminPreviewStation(${st.id})">${st.id}/13 ${escapeHtml(st.title)}</button>`;
+ }).join('');
+ return `<div class="admin-card"><h3>Náhled hry</h3><p class="small muted">Otevře obsah tak, jak ho vidí hráči, ale nezmění rozehranou hru.</p><div class="grid two"><button class="btn" onclick="adminPreviewStart()">Úvodní stránka</button>${stationButtons}<button class="btn" onclick="adminPreviewFinish()">Závěrečná stránka</button></div></div>`;
 }
 function adminPanelHtml(){
  const s=getState();
@@ -1345,6 +1351,17 @@ function adminPreviewStart(){
   <button class="btn" onclick="toast('Toto je jen admin náhled.')">Načepovat první stopu</button>
   <button class="btn ghost" style="margin-top:14px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
+function adminPreviewDiaryIntro(){
+ const st=station(1);
+ const intro=st.intro.includes('Tlačítko:') ? st.intro.split('Tlačítko:')[0] : st.intro;
+ modal(`<h2>1/13 - ${escapeHtml(st.title)}</h2><p class="small muted">První obrazovka zastávky před odemčením deníku. Náhled pro admina, nemění rozehranou hru žádného týmu.</p>
+  ${stationImage(st, true)}
+  ${introPanel(st, true, intro)}
+  <button class="btn" onclick="toast('Toto je jen admin náhled.')">Deník odemčen</button>
+  <button class="btn ghost" style="margin-top:14px" onclick="adminPreviewStation(1)">Zobrazit 1/13 po deníku</button>
+  <button class="btn ghost" style="margin-top:10px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+}
+window.adminPreviewDiaryIntro = adminPreviewDiaryIntro;
 async function fetchAdminStationData(id){
  const cached=adminStationCache.get(id);
  if(cached?.loaded) return cached;
