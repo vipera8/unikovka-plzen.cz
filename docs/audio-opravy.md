@@ -19,3 +19,4 @@ Tento seznam slouzi k prubeznemu sbirani casti, ktere bude potreba znovu vygener
 | K priprave | 7/13 Namesti Republiky | Uvod / zadani | Posledni odstavec zadani byl upraven kvuli rekonstrukci a vynechani domu U Zlate lode. | Zkontrolovat, zda audio nerika starsi ctyrsymbolovou variantu. |
 | K priprave | 8/13 Pivovarske muzeum a Plzenske podzemi | Uvod / zadani | Posledni odstavec zadani byl upraven na hledani znameni v oblouku nad vchodem do muzea. | Bude potreba znovu vygenerovat nebo upravit uvodni audio. |
 | K priprave | 9/13 Vodarenska vez a Masne kramy | Uvod / zadani | Posledni odstavec zadani byl upraven na "Podivejte se na cas na hodinkach...". | Zkontrolovat uvodni audio po finalizaci textu. |
+| K priprave | 13/13 Pivovar Prazdroj | Uvod / zadani | Zaver zadani byl prodlouzen o praci s 12 kartickami a nasbiranymi lahvickami. | Zkontrolovat uvodni audio po finalizaci textu. |
