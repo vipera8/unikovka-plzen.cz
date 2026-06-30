@@ -526,8 +526,11 @@ function renderHintContent(hint){
    const wrapClass = hint.image.includes('07_namesti_republiky_symboly') ? 'hint-image-wrap hint-image-wrap-transparent' : (hint.image.includes('09_vodarenska_vez_napoveda_3_symbol') ? 'hint-image-wrap hint-image-wrap-small-symbol' : 'hint-image-wrap');
    image = `<figure class="${wrapClass}"><img class="${imageClass}" src="${secretImageSrc(hint)}" alt="Nápověda" loading="lazy" onerror="this.closest('.hint-image-wrap').style.display='none'"></figure>`;
  }
+ const items = Array.isArray(hint.items)
+  ? `<div class="hint-icon-list">${hint.items.map(item=>`<div class="hint-icon-item"><span>${escapeHtml(item.text || '')}</span>${item.image?`<img class="hint-inline-icon" src="${secretImageSrc(item)}" alt="${escapeAttr(item.alt || '')}" loading="lazy">`:''}</div>`).join('')}</div>`
+  : '';
  const after = hint.textAfter ? `<div>${ptxt(hint.textAfter)}</div>` : '';
- return `${before}${image}${after}`;
+ return `${before}${image}${items}${after}`;
 }
 function renderSolutionContent(solution){
  if(typeof solution === 'string') return ptxt(solution);
