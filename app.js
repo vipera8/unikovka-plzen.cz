@@ -4,6 +4,9 @@ const app = $('#app');
 const LS_KEY = 'grollovaCestaState.v1';
 const ADMIN_KEY = 'grollovaCestaAdminLog.v1';
 const ACCESS_CODE_KEY = 'grollovaCestaAccessCode.v1';
+const GAME_VARIANT_KEY = 'grollovaCestaVariant.v1';
+const ADMIN_PREVIEW_VARIANT_KEY = 'grollovaCestaAdminPreviewVariant.v1';
+const SHORT_VARIANT_STATIONS = [1,2,4,6,7,9,13];
 const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 const now = () => Date.now();
 const normalize = s => (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
@@ -15,12 +18,50 @@ const readJson = (key, fallback) => {
 function activeAccessCode(){ return sessionStorage.getItem(ACCESS_CODE_KEY) || localStorage.getItem(ACCESS_CODE_KEY) || ''; }
 function stateKeyForCode(code){ return code ? `${LS_KEY}.${normalize(code)}` : LS_KEY; }
 const getState = () => activeAccessCode() ? readJson(stateKeyForCode(activeAccessCode()), null) : readJson(LS_KEY, null);
-const saveState = s => { const key=stateKeyForCode(s?.accessCode || activeAccessCode()); localStorage.setItem(key, JSON.stringify(s)); localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
+const saveState = s => { if(s?.variant){ sessionStorage.setItem(GAME_VARIANT_KEY, s.variant); localStorage.setItem(GAME_VARIANT_KEY, s.variant); } const key=stateKeyForCode(s?.accessCode || activeAccessCode()); localStorage.setItem(key, JSON.stringify(s)); localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
 const adminLog = () => readJson(ADMIN_KEY, []);
 const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s); };
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
 const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}&travelmode=walking`;
 const station = id => DATA.stations[id-1];
+function inferVariantFromCode(code='', orderType=''){
+ const c=normalize(code).replace(/[^A-Z0-9]/g,'');
+ const order=String(orderType||'').toLowerCase();
+ if(c.startsWith('GZK') || order.includes('krat') || order.includes('krát') || order.includes('short')) return 'short';
+ return 'long';
+}
+function variantLabel(variant){ return variant==='short' ? 'Krátká varianta' : 'Delší varianta'; }
+function variantForState(s=getState()){
+ return s?.variant || sessionStorage.getItem(GAME_VARIANT_KEY) || localStorage.getItem(GAME_VARIANT_KEY) || inferVariantFromCode(s?.accessCode || activeAccessCode(), s?.orderType || '');
+}
+function adminPreviewVariant(){
+ return sessionStorage.getItem(ADMIN_PREVIEW_VARIANT_KEY) || variantForState(getState());
+}
+function stationIdsForVariant(variant=variantForState()){
+ return variant==='short' ? SHORT_VARIANT_STATIONS : DATA.stations.map(st=>st.id);
+}
+function stationCountForVariant(variant=variantForState()){ return stationIdsForVariant(variant).length; }
+function stationIndexInVariant(id, variant=variantForState()){
+ return stationIdsForVariant(variant).indexOf(Number(id));
+}
+function stationLabel(id, variant=variantForState()){
+ const index=stationIndexInVariant(id, variant);
+ return `${index>=0 ? index+1 : Number(id)}/${stationCountForVariant(variant)}`;
+}
+function nextStationIdInVariant(id, variant=variantForState()){
+ const ids=stationIdsForVariant(variant);
+ const index=ids.indexOf(Number(id));
+ return index>=0 ? (ids[index+1] || null) : null;
+}
+function isFinalStationId(id, variant=variantForState()){
+ const ids=stationIdsForVariant(variant);
+ return Number(id)===ids[ids.length-1];
+}
+function clampStationToVariant(id, variant=variantForState()){
+ const ids=stationIdsForVariant(variant);
+ const n=Number(id || ids[0]);
+ return ids.includes(n) ? n : ids[0];
+}
 function monitorEndpoint(){ return String(window.GAME_DATA?.gameMonitorEndpoint || window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
 function monitorUrl(action, params={}){
  const endpoint=monitorEndpoint();
@@ -53,15 +94,35 @@ async function backendRequest(action, params={}){
  if(!url) throw new Error('Backend endpoint není nastaven.');
  return await loadJsonp(url);
 }
-function stationHintCount(st){ return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
+function stationHintCount(st){ if(variantForState()==='short' && Number(st?.id)===13) return 3; return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
 function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
+function stationIntroForVariant(st, variant=variantForState()){
+ if(variant==='short' && Number(st?.id)===13){
+  return String(st.intro || '').replace('všech 12 kartiček', 'všech 6 kartiček').replace('všech 12 nasbíraných kartiček', 'všech 6 nasbíraných kartiček');
+ }
+ return st?.intro || '';
+}
+function variantHintOverride(id, num, variant=variantForState()){
+ if(variant!=='short' || Number(id)!==13) return null;
+ if(Number(num)===1) return 'Vezmi všech 6 nasbíraných kartiček se směry. Kód k zámku získáš tak, že spočítáš, kolikrát se každý směr opakuje. Čísla zapiš v pořadí, v jakém se dané směry poprvé objevily během hry.';
+ if(Number(num)===2) return 'Nyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!';
+ if(Number(num)===3) return 'Na víčkách lahviček jsou římské číslice. Správné pořadí hledejte na bráně nad sebou - v římských číslicích. Lahvičky seřaďte podle prvního výskytu římských číslic v nápisu: MDCCCXLII. Tím získáte správné pořadí písmen a výsledné slovo pro cryptex.';
+ return null;
+}
+function variantSolutionOverride(id, variant=variantForState()){ return null; }
+function adminVariantHints(id, hints=[], variant=variantForState()){
+ if(variant!=='short' || Number(id)!==13) return hints;
+ return [1,2,3].map(num=>variantHintOverride(id, num, variant));
+}
 function publicTeamState(s){
  if(!s) return null;
+ const variant=variantForState(s);
  return {
   id:s.id,
   team:s.team || '',
   accessCode:s.accessCode || '',
+  variant,
   startTime:s.startTime || 0,
   currentStation:s.currentStation || 1,
   stationTitle:station(s.currentStation)?.title || '',
@@ -85,6 +146,7 @@ function syncTeamState(s){
   id:data.id,
   team:data.team,
   accessCode:data.accessCode,
+  variant:data.variant,
   currentStation:data.currentStation,
   stationTitle:data.stationTitle,
   startTime:data.startTime,
@@ -107,6 +169,7 @@ function sendMonitorEvent(row, s){
   teamId:s.id,
   team:s.team || '',
   accessCode:s.accessCode || '',
+  variant:variantForState(s),
   time:row.time,
   type:row.type,
   eventName:adminEventName(row),
@@ -133,13 +196,16 @@ function loadJsonp(url){
 }
 function stateFromOnlineRow(row){
  if(!row?.id) return null;
+ const variant=String(row.variant || inferVariantFromCode(row.accessCode || '', row.orderType || '') || 'long');
+ const current=clampStationToVariant(Number(row.currentStation || 1), variant);
  return {
   id:String(row.id),
   team:String(row.team || ''),
   accessCode:normalize(row.accessCode || ''),
+  variant,
   startTime:Number(row.startTime || now()),
-  currentStation:clamp(Number(row.currentStation || 1),1,DATA.stations.length),
-  unlocked:clamp(Number(row.currentStation || 1),1,DATA.stations.length),
+  currentStation:current,
+  unlocked:current,
   completed:safeJson(row.completed, []),
   wrong:safeJson(row.wrong, {}),
   wrongTotal:Number(row.wrongTotal || 0),
@@ -167,7 +233,7 @@ async function restoreOnlineStateByCode(code){
   return null;
  }
 }
-function defaultState(team){ return { id: globalThis.crypto?.randomUUID?.() || ('team-'+Date.now()), team, startTime: now(), currentStation:1, unlocked:1, completed:[], wrong:{}, wrongTotal:0, hints:{}, solutions:{}, diaryUnlocked:false, gpsConsent:false, gpsBypass:[], lastPos:null, finished:false, finishTime:null, offlineReady:false }; }
+function defaultState(team, variant=variantForState()){ const first=stationIdsForVariant(variant)[0]; return { id: globalThis.crypto?.randomUUID?.() || ('team-'+Date.now()), team, variant, startTime: now(), currentStation:first, unlocked:first, completed:[], wrong:{}, wrongTotal:0, hints:{}, solutions:{}, diaryUnlocked:false, gpsConsent:false, gpsBypass:[], lastPos:null, finished:false, finishTime:null, offlineReady:false }; }
 function shell(inner){ return `<main class="phone"><header class="topbar"><div class="brand"><b>Grollova cesta</b><span>${getState()?.team ? escapeHtml(getState().team)+' · ' : ''}<span class="timer" id="timer">0:00:00</span></span></div><button class="icon-btn" onclick="openMenu()">☰</button></header><section class="content">${inner}</section></main>`; }
 function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 function escapeAttr(s){return escapeHtml(String(s||''));}
@@ -440,8 +506,11 @@ async function verifyAccessCode(){
  }
  if(err) err.style.display='none';
  const code=normalize(result.accessCode || val);
+ const variant=inferVariantFromCode(code, result.orderType || '');
  sessionStorage.setItem(ACCESS_CODE_KEY, code);
  localStorage.setItem(ACCESS_CODE_KEY, code);
+ sessionStorage.setItem(GAME_VARIANT_KEY, variant);
+ localStorage.setItem(GAME_VARIANT_KEY, variant);
  grantGameAccess();
  if(!getState()){
  toast('Kontroluji uložený průběh hry...');
@@ -483,16 +552,16 @@ Za děti účastnící se hry odpovídá jejich dospělý doprovod.
 Pokud se zaseknete, použijte nápovědu. Pokud nastane technický problém nebo budete potřebovat pomoc, použijte tlačítko SOS.
 
 Přejeme vám šťastnou cestu po Grollových stopách.`;}
-function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const s=defaultState(team); s.accessCode=sessionStorage.getItem(ACCESS_CODE_KEY)||''; s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
+function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const variant=variantForState(); const s=defaultState(team, variant); s.accessCode=sessionStorage.getItem(ACCESS_CODE_KEY)||''; s.variant=variant; s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
 function continueWithoutLocation(){ window._gpsOk=false; alert('Hru můžete hrát i bez sdílení polohy. Navigace z aplikace a odeslání vaší polohy přes SOS ale nebudou fungovat.'); }
 function requestPosBeforeStart(){ if(!navigator.geolocation) return toast('Poloha není v tomto prohlížeči dostupná.'); navigator.geolocation.getCurrentPosition(pos=>{ window._gpsOk=true; window._lastPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy}; toast('Poloha povolena.'); },()=>toast('Poloha nebyla povolena nebo se ji nepodařilo načíst.'),{enableHighAccuracy:true,timeout:8000}); }
-function renderStation(){ const s=getState(); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${st.id}/${DATA.stations.length} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:DATA.stations.length,size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); if(!firstIntroOnly) prefetchStationHints(st.id); }
+function renderStation(){ const s=getState(); const variant=variantForState(s); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${stationLabel(st.id, variant)} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:stationCountForVariant(variant),size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); if(!firstIntroOnly) prefetchStationHints(st.id); }
 function renderStationSpecial(st,s,hintState){
  if(st.id===1 && !s.diaryUnlocked){
-  const intro = st.intro.split('Tlačítko:')[0];
+  const intro = stationIntroForVariant(st, variantForState(s)).split('Tlačítko:')[0];
   return `${stationImage(st, true)}${introPanel(st, true, intro)}<button class="btn" onclick="unlockDiary()">Deník odemčen</button>${diaryKeyHint()}`;
  }
- let intro = st.intro;
+ let intro = stationIntroForVariant(st, variantForState(s));
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  return `${stationImage(st, false)}${introPanel(st, false, intro)}${st.id===5?`<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>`:''}<div class="accordion"><button class="acc-head" onclick="toggleAcc(this); markMore(${st.id})">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>${renderHints(st,hintState)}`;
 }
@@ -669,12 +738,14 @@ function BeerProgress({completedStops=0,totalStops=13,size='small',animated=fals
   </svg>
  </div>`;
 }
-function beerProgress(done){ return BeerProgress({completedStops:done,totalStops:DATA.stations.length,size:'small',animated:false}); }
+function beerProgress(done){ return BeerProgress({completedStops:done,totalStops:stationCountForVariant(),size:'small',animated:false}); }
 function unlockDiary(){ const s=getState(); s.diaryUnlocked=true; saveState(s); addLog('diary_unlocked'); toast('Deník odemčen.'); render(); }
 const pendingHints = new Map();
 const pendingSolutions = new Map();
 async function fetchHintText(id,num){
  const s=getState();
+ const override=variantHintOverride(id, num, variantForState(s));
+ if(override) return override;
  if(hintText(s,id,num)) return hintText(s,id,num);
  const key=`${id}:${num}`;
  if(pendingHints.has(key)) return pendingHints.get(key);
@@ -692,6 +763,8 @@ async function fetchHintText(id,num){
 }
 async function fetchSolutionText(id){
  const s=getState();
+ const override=variantSolutionOverride(id, variantForState(s));
+ if(override) return override;
  if(solutionText(s,id)) return solutionText(s,id);
  if(pendingSolutions.has(id)) return pendingSolutions.get(id);
  const request=backendRequest('solution', {accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()})
@@ -867,12 +940,13 @@ function completeStation(expectedStationId){
  if(!s.completed.includes(st.id)) s.completed.push(st.id);
  addLog('station_completed');
  playUnlockFx();
- const isFinal = st.id>=DATA.stations.length;
+ const variant=variantForState(s);
+ const isFinal = isFinalStationId(st.id, variant);
  if(isFinal){
   s.finished=true;
   s.finishTime=now();
  } else {
-  const nextId=st.id+1;
+  const nextId=nextStationIdInVariant(st.id, variant);
   s.currentStation=nextId;
   s.unlocked=Math.max(s.unlocked,nextId);
 
@@ -888,7 +962,7 @@ function completeStation(expectedStationId){
  app.querySelector('.phone')?.classList.add('wow');
  const next = isFinal ? null : station(s.currentStation);
  const successText = isFinal ? 'SPRÁVNĚ!' : DATA.successMessages[Math.floor(Math.random()*DATA.successMessages.length)];
- const beer = BeerProgress({completedStops:s.completed.length,totalStops:DATA.stations.length,size:'large',animated:true,fromStops:previousDone});
+ const beer = BeerProgress({completedStops:s.completed.length,totalStops:stationCountForVariant(variant),size:'large',animated:true,fromStops:previousDone});
  if(isFinal){
   modal(`<div class="success-card"><h2>${successText}</h2><p>Poslední zámek povolil. Půllitr je plný.</p><div class="success-progress">${beer}</div><button class="btn" onclick="closeModal(); returnToGame()">Zobrazit certifikát</button></div>`, false);
   return;
@@ -896,8 +970,7 @@ function completeStation(expectedStationId){
  modal(`<div class="success-card"><h2>${successText}</h2><p>Výborně! Vaše další zastávka je:</p><h3>${escapeHtml(next.title)}</h3><div class="success-progress">${beer}</div>${bottleBoxNoticeHtml(st.id, s)}<a class="btn" href="${mapsUrl(next)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Navigovat</a><button class="btn secondary" onclick="closeModal(); returnToGame()" style="margin-top:10px">Pokračovat na další zastávku</button></div>`, false);
 }
 function isShortVariantState(s=getState()){
- const code=normalize(s?.accessCode || activeAccessCode());
- return code.startsWith('GZK');
+ return variantForState(s)==='short';
 }
 function bottleBoxNoticeHtml(stationId, s=getState()){
  if(Number(stationId)!==1 || isShortVariantState(s)) return '';
@@ -946,20 +1019,23 @@ function renderFinish(){
   teamName:s.team || '—',
   timeText:fmtTime(total),
   hintCount,
-  solutionCount
+  solutionCount,
+  variant:variantForState(s)
  }));
  addLeaderboardOnce();
 }
-function finishCertificateHtml({teamName='—', timeText='0:00:00', hintCount=0, solutionCount=0, admin=false}={}){
+function finishCertificateHtml({teamName='—', timeText='0:00:00', hintCount=0, solutionCount=0, variant=variantForState(), admin=false}={}){
  const debugClass = CERT_DEBUG ? ' certificate-debug' : '';
+ const certImage = certificateImageSrc(variant);
+ const leaderboardClick = `openLeaderboard('${variant}')`;
  return `
   <div class="cert-wrap cert-wrap-template">
     <section class="cert-fixed-template${debugClass}" id="cert" aria-label="Certifikát sládkovské odvahy">
-      <img class="cert-fixed-bg" src="assets/images/certifikat-bez-titulu.jpg" alt="Certifikát sládkovské odvahy">
-      <div id="field-team" class="cert-field cert-field-team" style="${certFieldStyle('team')}">${escapeHtml(teamName)}</div>
-      <div id="field-time" class="cert-field cert-field-time" style="${certFieldStyle('time')}">${escapeHtml(timeText)}</div>
-      <div id="field-hints" class="cert-field cert-field-hints" style="${certFieldStyle('hints')}">${escapeHtml(String(hintCount))}</div>
-      <div id="field-solutions" class="cert-field cert-field-solutions" style="${certFieldStyle('solutions')}">${escapeHtml(String(solutionCount))}</div>
+      <img class="cert-fixed-bg" src="${certImage}" alt="Certifikát sládkovské odvahy">
+      <div id="field-team" class="cert-field cert-field-team" style="${certFieldStyle('team', variant)}">${escapeHtml(teamName)}</div>
+      <div id="field-time" class="cert-field cert-field-time" style="${certFieldStyle('time', variant)}">${escapeHtml(timeText)}</div>
+      <div id="field-hints" class="cert-field cert-field-hints" style="${certFieldStyle('hints', variant)}">${escapeHtml(String(hintCount))}</div>
+      <div id="field-solutions" class="cert-field cert-field-solutions" style="${certFieldStyle('solutions', variant)}">${escapeHtml(String(solutionCount))}</div>
     </section>
   </div>
   <div class="grid cert-actions no-print" style="margin-top:14px">
@@ -967,7 +1043,7 @@ function finishCertificateHtml({teamName='—', timeText='0:00:00', hintCount=0,
     <button class="btn secondary" onclick="shareResult()">Sdílet výsledek</button>
     <button class="btn secondary" onclick="openSelfieBooth()">Vyfotit památeční fotku</button>
     <button class="btn secondary" onclick="openReviewModal()">Ohodnotit hru</button>
-    <button class="btn ghost" onclick="openLeaderboard()">Žebříček</button>
+    <button class="btn ghost" onclick="${leaderboardClick}">Žebříček</button>
     ${admin?'<button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>':''}
   </div>`;
 }
@@ -994,8 +1070,19 @@ const CERT_DOWNLOAD_X_OFFSET = {
   time: 9
 };
 
-function certFieldStyle(fieldName){
-  const f = CERT_DISPLAY_FIELDS[fieldName] || CERT_FIELDS[fieldName];
+function certificateImageSrc(variant=variantForState()){
+ return variant==='short' ? 'assets/images/certifikat-kratka-verze.png' : 'assets/images/certifikat-bez-titulu.jpg';
+}
+function certFieldForVariant(fieldName, variant=variantForState()){
+ const base = CERT_DISPLAY_FIELDS[fieldName] || CERT_FIELDS[fieldName];
+ if(variant==='short' && ['time','hints','solutions'].includes(fieldName)){
+  return {...base, y: base.y - 6};
+ }
+ return base;
+}
+
+function certFieldStyle(fieldName, variant=variantForState()){
+  const f = certFieldForVariant(fieldName, variant);
   const W = CERT_TEMPLATE_SIZE.width;
   const H = CERT_TEMPLATE_SIZE.height;
   const left = (f.x / W * 100).toFixed(4);
@@ -1104,7 +1191,7 @@ function adminDate(iso){
 function adminStationLabel(id){
  const n=Number(id);
  const st=station(n);
- return st ? `${st.id}/13 – ${st.title}` : String(id || '—');
+ return st ? `${stationLabel(st.id)} – ${st.title}` : String(id || '—');
 }
 function adminRows(){
  const rows=adminLog();
@@ -1167,14 +1254,14 @@ function adminHintsSummary(s){
  const hintTotal=Object.values(hints).reduce((sum,n)=>sum+(Number(n)||0),0);
  const solutionTotal=Object.values(solutions).filter(Boolean).length;
  if(!hintTotal && !solutionTotal) return `<h3>Použité nápovědy</h3><p>Zatím nebyla použita žádná nápověda.</p>`;
- const stationBlocks=DATA.stations.map(st=>{
+ const stationBlocks=stationIdsForVariant(variantForState(s)).map(id=>station(id)).filter(Boolean).map(st=>{
   const count=Number(hints[st.id]||0);
   const hasSolution=!!solutions[st.id];
   if(!count && !hasSolution) return '';
   const items=[];
   for(let i=1;i<=count;i++) items.push(`<li>Nápověda ${i}</li>`);
   if(hasSolution) items.push('<li>Řešení</li>');
-  return `<div class="admin-subcard"><b>${st.id}/13 – ${escapeHtml(st.title)}:</b><ul>${items.join('')}</ul></div>`;
+  return `<div class="admin-subcard"><b>${stationLabel(st.id, variantForState(s))} – ${escapeHtml(st.title)}:</b><ul>${items.join('')}</ul></div>`;
  }).join('');
  return `<h3>Použité nápovědy</h3><p><b>Celkem:</b> ${hintTotal}<br><b>Otevřená řešení:</b> ${solutionTotal}</p>${stationBlocks}`;
 }
@@ -1189,7 +1276,8 @@ function adminTeamCard(s, rows){
  const loc = s.lastPos ? `<a href="https://maps.google.com/?q=${s.lastPos.lat},${s.lastPos.lng}" target="_blank" rel="noopener">zobrazit na mapě</a>` : 'není dostupná';
  return `<div class="admin-card"><h3>Aktuální tým</h3>
   <p><b>Název týmu:</b> ${escapeHtml(s.team)}<br>
-  <b>Aktuální zastávka:</b> ${st ? `${st.id}/13 – ${escapeHtml(st.title)}` : '—'}<br>
+  <b>Varianta:</b> ${escapeHtml(variantLabel(variantForState(s)))}<br>
+  <b>Aktuální zastávka:</b> ${st ? `${stationLabel(st.id, variantForState(s))} – ${escapeHtml(st.title)}` : '—'}<br>
   <b>Čas ve hře:</b> ${fmtTime((s.finishTime||now())-s.startTime)}<br>
   <b>Stav:</b> ${status}<br>
   <b>Použité nápovědy celkem:</b> ${hintTotal}<br>
@@ -1211,14 +1299,24 @@ function adminLogHtml(rows){
  return `<h3>Log událostí</h3><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Detail</th></tr>${rows.slice(-80).reverse().map(r=>`<tr><td>${adminDate(r.time)}</td><td>${escapeHtml(adminEventName(r))}</td><td>${adminEventDetail(r)}</td></tr>`).join('')}</table>`;
 }
 function adminStationSelect(){
- const stationButtons=DATA.stations.map(st=>{
+ const variant=adminPreviewVariant();
+ const variantSwitch=`<div class="grid two admin-actions" style="margin-bottom:12px">
+   <button class="btn ${variant==='long'?'':'secondary'}" onclick="adminSetPreviewVariant('long')">Delší varianta</button>
+   <button class="btn ${variant==='short'?'':'secondary'}" onclick="adminSetPreviewVariant('short')">Krátká varianta</button>
+  </div>`;
+ const stationButtons=stationIdsForVariant(variant).map(id=>station(id)).filter(Boolean).map(st=>{
   if(st.id===1){
-   return `<button class="btn secondary" onclick="adminPreviewDiaryIntro()">1/13 ${escapeHtml(st.title)} - první obrazovka</button><button class="btn secondary" onclick="adminPreviewStation(${st.id})">1/13 ${escapeHtml(st.title)} - po deníku</button>`;
+   return `<button class="btn secondary" onclick="adminPreviewDiaryIntro()">${stationLabel(st.id, variant)} ${escapeHtml(st.title)} - první obrazovka</button><button class="btn secondary" onclick="adminPreviewStation(${st.id})">${stationLabel(st.id, variant)} ${escapeHtml(st.title)} - po deníku</button>`;
   }
-  return `<button class="btn secondary" onclick="adminPreviewStation(${st.id})">${st.id}/13 ${escapeHtml(st.title)}</button>`;
+  return `<button class="btn secondary" onclick="adminPreviewStation(${st.id})">${stationLabel(st.id, variant)} ${escapeHtml(st.title)}</button>`;
  }).join('');
- return `<div class="admin-card"><h3>Náhled hry</h3><p class="small muted">Otevře obsah tak, jak ho vidí hráči, ale nezmění rozehranou hru.</p><div class="grid two"><button class="btn" onclick="adminPreviewStart()">Úvodní stránka</button>${stationButtons}<button class="btn" onclick="adminPreviewFinish()">Závěrečná stránka</button></div></div>`;
+ return `<div class="admin-card"><h3>Náhled hry</h3><p class="small muted">Otevře obsah tak, jak ho vidí hráči ve variantě: ${escapeHtml(variantLabel(variant))}. Nezmění rozehranou hru.</p>${variantSwitch}<div class="grid two"><button class="btn" onclick="adminPreviewStart()">Úvodní stránka</button>${stationButtons}<button class="btn" onclick="adminPreviewFinish()">Závěrečná stránka</button></div></div>`;
 }
+function adminSetPreviewVariant(variant){
+ sessionStorage.setItem(ADMIN_PREVIEW_VARIANT_KEY, variant==='short' ? 'short' : 'long');
+ openAdminPanel();
+}
+window.adminSetPreviewVariant = adminSetPreviewVariant;
 function adminPanelHtml(){
  const s=getState();
  const rows=adminRows();
@@ -1250,6 +1348,7 @@ function safeJson(value, fallback){
  try{ return JSON.parse(value); }catch(e){ return fallback; }
 }
 function onlineTeamSummary(team){
+ const variant=String(team.variant || inferVariantFromCode(team.accessCode || '', team.orderType || '') || 'long');
  const hints=safeJson(team.hints, team.hints || {});
  const solutions=safeJson(team.solutions, team.solutions || {});
  const completed=safeJson(team.completed, team.completed || []);
@@ -1264,7 +1363,8 @@ function onlineTeamSummary(team){
  return `<div class="admin-subcard">
   <h4>${escapeHtml(team.team || 'Bez názvu')}</h4>
   <p><b>Přístupový kód:</b> ${escapeHtml(team.accessCode || '—')}<br>
-  <b>Aktuální zastávka:</b> ${currentId}/13 – ${escapeHtml(team.stationTitle || st?.title || '—')}<br>
+  <b>Varianta:</b> ${escapeHtml(variantLabel(variant))}<br>
+  <b>Aktuální zastávka:</b> ${stationLabel(currentId, variant)} – ${escapeHtml(team.stationTitle || st?.title || '—')}<br>
   <b>Dokončené zastávky:</b> ${Array.isArray(completed) ? completed.length : 0}<br>
   <b>Nápovědy celkem:</b> ${hintTotal}<br>
   <b>Řešení celkem:</b> ${solutionTotal}<br>
@@ -1367,15 +1467,17 @@ function adminPreviewStart(){
   <button class="btn ghost" style="margin-top:14px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
 function adminPreviewDiaryIntro(){
- const st=station(1);
- const intro=st.intro.includes('Tlačítko:') ? st.intro.split('Tlačítko:')[0] : st.intro;
- modal(`<h2>1/13 - ${escapeHtml(st.title)}</h2><p class="small muted">První obrazovka zastávky před odemčením deníku. Náhled pro admina, nemění rozehranou hru žádného týmu.</p>
-  ${stationImage(st, true)}
-  ${introPanel(st, true, intro)}
-  <button class="btn" onclick="toast('Toto je jen admin náhled.')">Deník odemčen</button>
-  ${diaryKeyHint()}
-  <button class="btn ghost" style="margin-top:14px" onclick="adminPreviewStation(1)">Zobrazit 1/13 po deníku</button>
-  <button class="btn ghost" style="margin-top:10px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
+  const st=station(1);
+  const variant=adminPreviewVariant();
+  const baseIntro=stationIntroForVariant(st, variant);
+  const intro=baseIntro.includes('Tlačítko:') ? baseIntro.split('Tlačítko:')[0] : baseIntro;
+  modal(`<h2>${stationLabel(1, variant)} - ${escapeHtml(st.title)}</h2><p class="small muted">První obrazovka zastávky před odemčením deníku. Náhled pro admina, nemění rozehranou hru žádného týmu.</p>
+   ${stationImage(st, true)}
+   ${introPanel(st, true, intro)}
+   <button class="btn" onclick="toast('Toto je jen admin náhled.')">Deník odemčen</button>
+   ${diaryKeyHint()}
+   <button class="btn ghost" style="margin-top:14px" onclick="adminPreviewStation(1)">Zobrazit ${stationLabel(1, variant)} po deníku</button>
+   <button class="btn ghost" style="margin-top:10px" onclick="openAdminPanel()">Zpět do adminu</button>`, false);
 }
 window.adminPreviewDiaryIntro = adminPreviewDiaryIntro;
 async function fetchAdminStationData(id){
@@ -1404,12 +1506,13 @@ async function adminPreviewStation(id=null){
   id=n;
  }
  id=clamp(parseInt(id,10)||1,1,13);
+ const variant=adminPreviewVariant();
  const st=station(id);
- let intro = st.intro || '';
+ let intro = stationIntroForVariant(st, variant) || '';
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const jingleControl = id===5 ? `<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>` : '';
- const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
  const token=`${id}-${Date.now()}`;
  window._adminPreviewToken=token;
  const updatePreview=secretHtml=>{
@@ -1417,13 +1520,13 @@ async function adminPreviewStation(id=null){
  };
  const cached=adminStationCache.get(id);
  if(cached?.hints){
-  updatePreview(renderAdminHints(st, cached.hints, cached.solution, !Object.prototype.hasOwnProperty.call(cached, 'solution')));
+  updatePreview(renderAdminHints(st, adminVariantHints(id, cached.hints, variant), cached.solution, !Object.prototype.hasOwnProperty.call(cached, 'solution')));
  }else{
   updatePreview('<div class="admin-card"><p>Načítám nápovědy...</p></div>');
  }
  try{
   const stationData=await fetchAdminStationData(id);
-  updatePreview(renderAdminHints(st, stationData.hints, stationData.solution, false));
+  updatePreview(renderAdminHints(st, adminVariantHints(id, stationData.hints, variant), stationData.solution, false));
  }catch(e){
   console.error(e);
   updatePreview('<div class="admin-card"><p class="small muted">Nápovědy a řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste otevřít náhled znovu.</p></div>');
@@ -1433,30 +1536,37 @@ window.adminPreviewStation = adminPreviewStation;
 window.openAdminPanel = openAdminPanel;
 function adminPreviewWrongCode(id){
  const st=station(id);
+ const variant=adminPreviewVariant();
  const msg=DATA.wrongMessages?.[0] || 'Kód nesedí. Zkuste to znovu.';
- modal(`<h2>Test špatného kódu</h2><p class="small muted">Simulace pro admina, nemění hru týmu.</p><div class="card error"><p><b>Zastávka:</b> ${id}/13 – ${escapeHtml(st.title)}</p><p>${escapeHtml(msg)}</p></div><button class="btn ghost" onclick="adminPreviewStation(${id})">Zpět na zastávku</button>`, false);
+ modal(`<h2>Test špatného kódu</h2><p class="small muted">Simulace pro admina, nemění hru týmu.</p><div class="card error"><p><b>Zastávka:</b> ${stationLabel(id, variant)} – ${escapeHtml(st.title)}</p><p>${escapeHtml(msg)}</p></div><button class="btn ghost" onclick="adminPreviewStation(${id})">Zpět na zastávku</button>`, false);
 }
 function adminPreviewCorrectCode(id){
- const isFinal=id>=DATA.stations.length;
- const next=isFinal ? null : station(id+1);
+ const variant=adminPreviewVariant();
+ const isFinal=isFinalStationId(id, variant);
+ const nextId=nextStationIdInVariant(id, variant);
+ const next=isFinal ? null : station(nextId);
  const successText=DATA.successMessages?.[0] || 'Výborně!';
- const beer=BeerProgress({completedStops:id,totalStops:DATA.stations.length,size:'large',animated:true,fromStops:Math.max(0,id-1)});
+ const completed=Math.max(0, stationIndexInVariant(id, variant)+1);
+ const beer=BeerProgress({completedStops:completed,totalStops:stationCountForVariant(variant),size:'large',animated:true,fromStops:Math.max(0,completed-1)});
  if(isFinal){
   modal(`<div class="success-card"><h2>${escapeHtml(successText)}</h2><p>Poslední zámek povolil. Půllitr je plný.</p><div class="success-progress">${beer}</div><button class="btn" onclick="adminPreviewCertificate()">Zobrazit certifikát</button><button class="btn ghost" style="margin-top:10px" onclick="adminPreviewStation(${id})">Zpět na zastávku</button></div>`, false);
   return;
  }
- modal(`<div class="success-card"><h2>${escapeHtml(successText)}</h2><p>Výborně! Vaše další zastávka je:</p><h3>${escapeHtml(next.title)}</h3><div class="success-progress">${beer}</div>${bottleBoxNoticeHtml(id)}<a class="btn" href="${mapsUrl(next)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Navigovat</a><button class="btn secondary" onclick="adminPreviewStation(${id+1})" style="margin-top:10px">Pokračovat na další zastávku</button><button class="btn ghost" onclick="adminPreviewStation(${id})" style="margin-top:10px">Zpět na zastávku</button></div>`, false);
+ modal(`<div class="success-card"><h2>${escapeHtml(successText)}</h2><p>Výborně! Vaše další zastávka je:</p><h3>${escapeHtml(next.title)}</h3><div class="success-progress">${beer}</div>${bottleBoxNoticeHtml(id)}<a class="btn" href="${mapsUrl(next)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Navigovat</a><button class="btn secondary" onclick="adminPreviewStation(${nextId})" style="margin-top:10px">Pokračovat na další zastávku</button><button class="btn ghost" onclick="adminPreviewStation(${id})" style="margin-top:10px">Zpět na zastávku</button></div>`, false);
 }
 function adminPreviewBeer(id){
- const beer=BeerProgress({completedStops:id,totalStops:DATA.stations.length,size:'large',animated:true,fromStops:Math.max(0,id-1)});
+ const variant=adminPreviewVariant();
+ const completed=Math.max(0, stationIndexInVariant(id, variant)+1);
+ const beer=BeerProgress({completedStops:completed,totalStops:stationCountForVariant(variant),size:'large',animated:true,fromStops:Math.max(0,completed-1)});
  modal(`<div class="success-card"><h2>Test animace půllitru</h2><p class="small muted">Simulace pro admina, nemění hru týmu.</p><div class="success-progress">${beer}</div><button class="btn ghost" onclick="adminPreviewStation(${id})">Zpět na zastávku</button></div>`, false);
 }
 function adminPreviewCertificate(){
  adminPreviewFinish();
 }
 function adminPreviewFinish(){
- modal(`<h2>Závěrečná stránka</h2><p class="small muted">Náhled pro admina, nemění rozehranou hru žádného týmu.</p>${finishCertificateHtml({teamName:'Testovací tým', timeText:'3:12:45', hintCount:4, solutionCount:1, admin:true})}`, false);
- window._adminCertificateData={team:'Testovací tým', time:'3:12:45', hints:4, solutions:1, title:'Grollova pravá ruka', imageSrc:'assets/images/certifikat-bez-titulu.jpg'};
+ const variant=adminPreviewVariant();
+ modal(`<h2>Závěrečná stránka</h2><p class="small muted">Náhled pro admina, nemění rozehranou hru žádného týmu.</p>${finishCertificateHtml({teamName:'Testovací tým', timeText:'3:12:45', hintCount:4, solutionCount:1, variant, admin:true})}`, false);
+ window._adminCertificateData={team:'Testovací tým', time:'3:12:45', hints:4, solutions:1, title:'Grollova pravá ruka', variant, imageSrc:certificateImageSrc(variant)};
 }
 window.adminPreviewWrongCode = adminPreviewWrongCode;
 window.adminPreviewCorrectCode = adminPreviewCorrectCode;
@@ -1469,7 +1579,7 @@ function adminUnlockNext(){
  adminPreviewStation();
 }
 function resetGame(){ if(confirm('Opravdu resetovat lokální hru pro aktuální přístupový kód?')){ localStorage.removeItem(stateKeyForCode(activeAccessCode())); localStorage.removeItem(LS_KEY); localStorage.removeItem(ADMIN_KEY); closeModal(); renderStart(); } }
-function leaderboardKey(){ return 'grollLeaderboard.v1'; }
+function leaderboardKey(variant=variantForState()){ return `grollLeaderboard.v1.${variant}`; }
 function leaderboardEndpoint(){ return String(window.GAME_DATA?.leaderboardEndpoint || '').trim(); }
 function buildLeaderboardEntry(){
  const s=getState();
@@ -1480,6 +1590,7 @@ function buildLeaderboardEntry(){
  return {
   id:s.id || ('team-'+(s.team||'')+'-'+(s.startTime||now())),
   team:s.team || 'Bez názvu',
+  variant:variantForState(s),
   total,
   hints:hintCount,
   solutions:solutionCount,
@@ -1487,19 +1598,19 @@ function buildLeaderboardEntry(){
   date:new Date(s.finishTime||now()).toISOString()
  };
 }
-function localLeaderboardRows(){
+function localLeaderboardRows(variant=variantForState()){
  let rows=[];
- try{ rows=JSON.parse(localStorage.getItem(leaderboardKey())||'[]'); }catch(e){ rows=[]; }
+ try{ rows=JSON.parse(localStorage.getItem(leaderboardKey(variant))||'[]'); }catch(e){ rows=[]; }
  return rows.filter(Boolean);
 }
 function saveLocalLeaderboard(entry){
  if(!entry) return;
- const rows=localLeaderboardRows();
+ const rows=localLeaderboardRows(entry.variant || variantForState());
  const exists=rows.some(r=>r && r.id===entry.id);
  if(!exists){
   rows.push(entry);
   rows.sort((a,b)=>(a.total||0)-(b.total||0));
-  localStorage.setItem(leaderboardKey(), JSON.stringify(rows.slice(0,50)));
+  localStorage.setItem(leaderboardKey(entry.variant || variantForState()), JSON.stringify(rows.slice(0,50)));
  }
 }
 function leaderboardUrl(action, params={}){
@@ -1512,41 +1623,43 @@ function leaderboardUrl(action, params={}){
  }
  return url.toString();
 }
+function leaderboardVariantParam(variant){ return variant || variantForState(); }
 async function addLeaderboardOnce(){
  const entry=buildLeaderboardEntry();
  if(!entry) return;
  saveLocalLeaderboard(entry);
- const url=leaderboardUrl('add', entry);
+  const url=leaderboardUrl('add', {...entry, variant:entry.variant || leaderboardVariantParam()});
  if(!url) return;
  fireAndForget(url);
 }
-async function fetchOnlineLeaderboard(){
- const url=leaderboardUrl('list');
+async function fetchOnlineLeaderboard(variant=leaderboardVariantParam()){
+ const url=leaderboardUrl('list', {variant:leaderboardVariantParam(variant)});
  if(!url) return null;
  const data=await loadJsonp(url);
  return Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : []);
 }
-async function openLeaderboard(){
- let rows=localLeaderboardRows();
+async function openLeaderboard(variant=leaderboardVariantParam()){
+ variant=leaderboardVariantParam(variant);
+ let rows=localLeaderboardRows(variant);
  let sourceText = leaderboardEndpoint()
-  ? 'Společný online žebříček výsledků všech týmů.'
-  : 'Společný online žebříček zatím není nastavený. Dočasně se zobrazují jen výsledky uložené v tomto zařízení.';
+  ? `Online žebříček pro variantu: ${variantLabel(variant)}.`
+  : `Online žebříček zatím není nastavený. Dočasně se zobrazují jen výsledky uložené v tomto zařízení pro variantu: ${variantLabel(variant)}.`;
  if(leaderboardEndpoint()){
   try{
-   const onlineRows=await fetchOnlineLeaderboard();
+   const onlineRows=await fetchOnlineLeaderboard(variant);
    if(onlineRows) rows=onlineRows;
   }catch(e){
    console.warn('Online leaderboard load failed', e);
    sourceText='Online žebříček se teď nepodařilo načíst. Zobrazuji záložní výsledky uložené v tomto zařízení.';
   }
  }
- rows=rows.filter(Boolean).sort((a,b)=>(a.total||0)-(b.total||0));
+ rows=rows.filter(row=>row && (row.variant ? row.variant===variant : variant==='long')).sort((a,b)=>(a.total||0)-(b.total||0));
  if(!rows.length){
-  modal(`<h2>Žebříček</h2><p>Zatím tu není žádný zapsaný výsledek.</p><p class="small muted">${sourceText}</p>`);
+  modal(`<h2>Žebříček – ${escapeHtml(variantLabel(variant))}</h2><p>Zatím tu není žádný zapsaný výsledek.</p><p class="small muted">${sourceText}</p>`);
   return;
  }
  const table = rows.slice(0,20).map((r,i)=>`<tr><td>${i+1}.</td><td>${escapeHtml(r.team||'—')}</td><td>${fmtTime(r.total||0)}</td><td>${escapeHtml(r.title||'—')}</td></tr>`).join('');
- modal(`<h2>Žebříček</h2><div style="overflow:auto"><table class="leaderboard-table"><thead><tr><th>Pořadí</th><th>Tým</th><th>Čas</th><th>Titul</th></tr></thead><tbody>${table}</tbody></table></div><p class="small muted" style="margin-top:10px">${sourceText}</p>`);
+ modal(`<h2>Žebříček – ${escapeHtml(variantLabel(variant))}</h2><div style="overflow:auto"><table class="leaderboard-table"><thead><tr><th>Pořadí</th><th>Tým</th><th>Čas</th><th>Titul</th></tr></thead><tbody>${table}</tbody></table></div><p class="small muted" style="margin-top:10px">${sourceText}</p>`);
 }
 async function shareResult(){
  const adminData=window._adminCertificateData;
@@ -1781,7 +1894,7 @@ async function shareGrollSelfie(){
  }
 }
 
-function exportData(){ const blob=new Blob([JSON.stringify({state:getState(),log:adminLog(),leaderboard:JSON.parse(localStorage.getItem('grollLeaderboard.v1')||'[]')},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grollova-cesta-export.json'; a.click(); }
+function exportData(){ const blob=new Blob([JSON.stringify({state:getState(),log:adminLog(),leaderboard:JSON.parse(localStorage.getItem(leaderboardKey())||'[]')},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grollova-cesta-export.json'; a.click(); }
 function certificateData(){
  if(window._adminCertificateData) return window._adminCertificateData;
  const s=getState();
@@ -1793,7 +1906,8 @@ function certificateData(){
   hints:Object.values(s.hints || {}).reduce((sum,n)=>sum+(Number(n)||0),0),
   solutions:Object.values(s.solutions || {}).filter(Boolean).length,
   title:titleFor(total),
-  imageSrc:'assets/images/certifikat-bez-titulu.jpg'
+   variant:variantForState(s),
+   imageSrc:certificateImageSrc(variantForState(s))
  };
 }
 function loadImage(src){
@@ -1830,7 +1944,7 @@ async function createCertificateBlob(){
  ctx.fillStyle='#2f1a0d';
  ctx.textBaseline='middle';
  const drawField=(name, text)=>{
-  const f=CERT_FIELDS[name];
+  const f=certFieldForVariant(name, data.variant);
   const centerY=f.y + f.h / 2 + (CERT_DOWNLOAD_OFFSET[name] || 0);
   const weight=700;
   const size=name==='team' ? fitCanvasFont(ctx, weight, f.font, 22, text, f.w) : f.font;
@@ -1921,7 +2035,7 @@ function openRulesModal(){
 }
 function openMenu(){
  const s=getState();
- const stationLine = s && !s.finished ? `<p class="small muted">Aktuální zastávka: ${s.currentStation}/${DATA.stations.length}</p>` : '';
+ const stationLine = s && !s.finished ? `<p class="small muted">Aktuální zastávka: ${stationLabel(s.currentStation, variantForState(s))}</p>` : '';
  modal(`<h2>Menu</h2>${stationLine}<div class="menu-list">
  <button class="btn secondary" onclick="closeModal(); openRulesModal()">Pravidla hry</button>
   <button class="btn danger" onclick="closeModal(); openSOS()">SOS pomoc</button>
