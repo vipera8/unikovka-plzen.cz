@@ -507,14 +507,14 @@ function stationImage(st, firstScreen=false){
  const wrapExtra = st.id===8 ? ' station-08-wrap' : '';
  return `<figure class="station-image-wrap${wrapExtra}"><img class="station-image${extra}" src="assets/images/${encodeURI(img)}" alt="${escapeHtml(st.title)}" loading="eager" onerror="this.closest('.station-image-wrap').style.display='none'"></figure>`;
 }
-function introPanel(st, firstScreen=false, intro=''){
+function introPanel(st, firstScreen=false, intro='', opened=false){
  const audio=currentIntroAudio(st, firstScreen);
  const audioPart = audio
   ? `<audio class="intro-player" controls preload="metadata" src="assets/audio/${encodeURI(audio)}"></audio>`
   : `<p class="small muted">Úvodní audio pro tuto zastávku zatím chybí.</p>`;
  const extraTitle = st.introImageTitle ? `<div class="intro-image-title">${escapeHtml(st.introImageTitle)}</div>` : '';
  const extraImage = st.introImage ? `<figure class="intro-image-wrap"><img class="intro-inline-image" src="assets/images/${encodeURI(st.introImage)}" alt="${escapeHtml(st.introImageTitle || st.title)}" loading="lazy" onerror="this.closest('.intro-image-wrap').style.display='none'"></figure>` : '';
- return `<div class="accordion intro-accordion"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
+ return `<div class="accordion intro-accordion${opened?' open':''}"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
 }
 function renderHintContent(hint){
  if(typeof hint === 'string') return ptxt(hint);
@@ -1397,7 +1397,7 @@ async function adminPreviewStation(id=null){
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const jingleControl = id===5 ? `<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>` : '';
- const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${id}/13</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
  const token=`${id}-${Date.now()}`;
  window._adminPreviewToken=token;
  const updatePreview=secretHtml=>{
