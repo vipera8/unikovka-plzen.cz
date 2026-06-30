@@ -2,7 +2,7 @@
     "leaderboardEndpoint":  "https://script.google.com/macros/s/AKfycbxEr_pYTUDGvoSDkzZbdpO7DdEONm_wVzso4as7V8mYMFyoO0WX7clH0v4XVlCfB8pj/exec",
     "gameMonitorEndpoint":  "https://script.google.com/macros/s/AKfycbxEr_pYTUDGvoSDkzZbdpO7DdEONm_wVzso4as7V8mYMFyoO0WX7clH0v4XVlCfB8pj/exec",
     "googleReviewUrl":  "https://g.page/r/CThaNwiGz76cEBM/review",
-    "facebookReviewUrl":  "",
+    "facebookReviewUrl":  "https://www.facebook.com/profile.php?id=61591459980333\u0026sk=reviews",
     "gpsMode":  "warn",
     "gpsRadiusMeters":  150,
     "phone":  "+420737256827",
