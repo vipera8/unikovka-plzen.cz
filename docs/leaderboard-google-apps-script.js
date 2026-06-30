@@ -1,5 +1,5 @@
 ﻿const ADMIN_PASSWORD_PROPERTY = 'ADMIN_PASSWORD';
-const LEAD_NOTIFICATION_EMAIL = 'hravaplzen@gmail.com';
+const LEAD_NOTIFICATION_EMAIL = 'info@unikovka-plzen.cz';
 const SHEETS = {
   leaderboard: 'Leaderboard', teams: 'Teams', events: 'Events',
   accessCodes: 'AccessCodes', leads: 'Leads', secrets: 'StationSecrets',
@@ -137,7 +137,7 @@ function leadCustomerSubject_(type){
 }
 function leadCustomerBody_(type,name,p){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
-  const footer='\n\nHravá Plzeň\nGrollova zlatá stopa\nE-mail: hravaplzen@gmail.com\nTelefon: 737 256 827\n\nToto je automatické potvrzení přijetí formuláře.';
+  const footer='\n\nHravá Plzeň\nGrollova zlatá stopa\nE-mail: info@unikovka-plzen.cz\nTelefon: 737 256 827\n\nToto je automatické potvrzení přijetí formuláře.';
   if(type==='rezervace'){
     return hello+'\n\nDěkujeme za rezervaci hry Grollova zlatá stopa.\n\nVaši poptávku jsme přijali. Nejdříve ověříme požadovaný termín a poté vám pošleme potvrzení s platebními údaji a dalšími informacemi ke startu hry.\n\nShrnutí rezervace:\n'+leadPayloadLines_(p)+footer;
   }

@@ -88,7 +88,7 @@ Pro ruční generování přes URL lze použít akci `generateCodes` s admin hes
 Formuláře z webu se ukládají do listu `Leads` a zároveň se posílá notifikace na adresu nastavenou v Apps Scriptu:
 
 ```js
-const LEAD_NOTIFICATION_EMAIL = 'hravaplzen@gmail.com';
+const LEAD_NOTIFICATION_EMAIL = 'info@unikovka-plzen.cz';
 ```
 
 Až bude nový e-mail hotový, změňte tuto hodnotu a také veřejný kontakt v `app.js`.
