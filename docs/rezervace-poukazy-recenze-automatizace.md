@@ -74,7 +74,7 @@ děkujeme za platbu. Vaše hra je připravena.
 Přístupový kód: {{pristupovy_kod}}
 
 Hru spustíte na webu:
-https://hrava-plzen.cz/#/hra
+https://www.unikovka-plzen.cz/#/hra
 
 Start hry: hlavní hala plzeňského vlakového nádraží, u sochy Železničáře.
 

@@ -1977,7 +1977,7 @@ async function downloadCertificate(){
  }
 }
 function socialUrl(type, text){
- const pageUrl='https://hrava-plzen.cz';
+ const pageUrl='https://www.unikovka-plzen.cz';
  const url=encodeURIComponent(pageUrl);
  const msg=encodeURIComponent(`${text}\n${pageUrl}`);
  if(type==='facebook') return `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${msg}`;
@@ -2002,7 +2002,7 @@ async function shareCertificateNative(){
    return;
   }
   if(navigator.share){
-   await navigator.share({title:'Grollova zlatá stopa', text, url:'https://hrava-plzen.cz'});
+   await navigator.share({title:'Grollova zlatá stopa', text, url:'https://www.unikovka-plzen.cz'});
    return;
   }
   await navigator.clipboard.writeText(text);
