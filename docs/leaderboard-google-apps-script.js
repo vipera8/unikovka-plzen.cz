@@ -201,7 +201,7 @@ function saveLead_(e){
   const email=String(p['E-mail']||''), phone=String(p['Telefon']||'');
   const amountKc=inferLeadAmountKc_(type,p);
   const initialStatus=type==='poukaz' ? 'čeká na platbu' : 'nové';
-  const item={time:czDateTime_(),type,name,email,phone,payload:payloadText,status:initialStatus,amountKc,confirmedEmailSentAt:'',paidEmailSentAt:'',voucherCode:'',voucherValidUntil:''}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:''));
+  const item={time:czDateTime_(),type,name,email,phone,payload:payloadText,status:initialStatus,amountKc,confirmedEmailSentAt:type==='poukaz'?new Date().toISOString():'',paidEmailSentAt:'',voucherCode:'',voucherValidUntil:''}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:''));
   if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) sendPublicEmail_({to:LEAD_NOTIFICATION_EMAIL,subject:'Únikovka Plzeň - '+type,body:leadInternalNotificationBody_(type,p,item)});
   if(email && email.indexOf('@')>-1) sendPublicEmail_({to:email,subject:leadCustomerSubject_(type),body:leadCustomerBody_(type,name,p,item)});
   return json_({ok:true},e);
@@ -251,7 +251,11 @@ function voucherPaymentBody_(name,p,item){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
   const amount=amountLabel_(item && item.amountKc);
   const paymentLines=amount ? ['Částka k úhradě:',amount,''] : ['Částku k úhradě vám ještě potvrdíme podle zvolené varianty a počtu hráčů.',''];
-  return [hello,'','děkujeme za objednávku dárkového poukazu na hru Grollova zlatá stopa.','', 'Shrnutí objednávky:', leadPayloadLines_(p),''].concat(paymentLines).concat(['Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:','Dárkový poukaz - Grollova stopa','','Po přijetí platby vystavíme elektronický poukaz s unikátním číslem voucheru. Platnost poukazu je 12 měsíců od zaplacení.','','Děkujeme.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827']).join('\n');
+  return [hello,'','děkujeme za objednávku dárkového poukazu na hru Grollova zlatá stopa.','', 'Shrnutí objednávky:', leadPayloadLines_(p),''].concat(paymentLines).concat(['Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:',leadPaymentIdentifier_(name,p,item),'','Po přijetí platby vystavíme elektronický poukaz s unikátním číslem voucheru. Platnost poukazu je 12 měsíců od zaplacení.','','Děkujeme.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827']).join('\n');
+}
+function leadPaymentIdentifier_(name,p,item){
+  const who=String(name||p['Jméno objednatele']||p['Jméno a příjmení']||item?.name||item?.email||'objednávka').trim();
+  return 'Dárkový poukaz - '+who;
 }
 function createAccessCodes_(p){
   const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const count=Math.max(1,Math.min(100,Number(p.count||1))); const existing=new Set(rows_(SHEETS.accessCodes).map(r=>normalize_(r.accessCode))); const out=[], batch=[], now=new Date().toISOString(); const variant=variantFromParam_(p); const prefix=variantPrefix_(variant);
@@ -358,7 +362,7 @@ function confirmedSubject_(type){ if(type==='poukaz') return 'Dárkový poukaz G
 function confirmedBody_(type,name,p,item){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
   const payment=paymentLines_(item);
-  if(type==='poukaz') return [hello,'','děkujeme za objednávku dárkového poukazu na hru Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:','Dárkový poukaz - Grollova stopa','','Po přijetí platby vám zašleme elektronický dárkový poukaz.','','Platnost poukazu je 12 měsíců od zaplacení.','','Děkujeme.','','Hravá Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
+  if(type==='poukaz') return [hello,'','děkujeme za objednávku dárkového poukazu na hru Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:',leadPaymentIdentifier_(name,p,item),'','Po přijetí platby vám zašleme elektronický dárkový poukaz.','','Platnost poukazu je 12 měsíců od zaplacení.','','Děkujeme.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
   return [hello,'','potvrzujeme rezervaci hry Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:','Grollova stopa - '+(name || 'rezervace'),'','Po přijetí platby vám pošleme organizační informace ke hře. Přístupový kód do hry neposíláme předem, aby se hra nespouštěla mimo start. Dostanete ho při převzetí herního batohu.','','Děkujeme a těšíme se na vás.','','Hravá Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
 }
 function paidSubject_(type){ if(type==='poukaz') return 'Dárkový poukaz Grollova zlatá stopa - platba přijata'; return 'Platba přijata - Grollova zlatá stopa'; }
