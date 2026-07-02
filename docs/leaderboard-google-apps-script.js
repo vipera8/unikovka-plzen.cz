@@ -13,7 +13,7 @@ const SHEETS = {
 };
 const HEADERS = {
   accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt'],
-  leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil'],
+  leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil','accessCode','accessCodeCreatedAt'],
   vouchers: ['voucherCode','status','buyerName','buyerEmail','phone','amountKc','variant','createdAt','paidAt','validUntil','leadRow','usedAt','notes'],
   secrets: ['stationId','title','unlockCode','hintsJson','solutionJson'],
   secretImages: ['fileName','driveFileId','mimeType','notes'],
@@ -86,6 +86,28 @@ function ensureVoucherForLead_(item,p,row){
   return {code, validUntil};
 }
 function voucherValidUntil_(){ const d=new Date(); d.setFullYear(d.getFullYear()+1); return Utilities.formatDate(d, 'Europe/Prague', 'dd.MM.yyyy'); }
+function ensureReservationAccessCode_(item,p,row){
+  if(String(item.accessCode||'').trim()) return String(item.accessCode).trim();
+  const variant=leadVariant_(p,item);
+  const name=String(item.name||p['Jméno a příjmení']||p['Jméno objednatele']||p['Jméno']||'');
+  const email=String(item.email||p['E-mail']||'');
+  const phone=String(item.phone||p['Telefon']||'');
+  const codes=createAccessCodes_({
+    count:1,
+    status:'active',
+    orderType:variantLabel_(variant),
+    variant,
+    customerName:name,
+    email,
+    phone,
+    notes:'Rezervace z Leads, řádek '+row
+  });
+  return codes[0] || '';
+}
+function leadVariant_(p,item){
+  const text=String(p['Varianta hry']||p['Varianta']||p['Typ poukazu']||item?.variant||item?.orderType||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return text.indexOf('krat')>=0 || text.indexOf('short')>=0 ? 'short' : 'long';
+}
 function installLeadStatusTrigger(){ ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()==='leadStatusOnEdit_').forEach(t=>t && ScriptApp.deleteTrigger(t)); ScriptApp.newTrigger('leadStatusOnEdit_').forSpreadsheet(workbook_()).onEdit().create(); }
 
 function doGet(e){
@@ -342,11 +364,16 @@ function handleLeadStatusRow_(sh, row, headers){
   }
   if(status==='paid' && !String(item.paidEmailSentAt||'').trim()){
     const voucher=item.type==='poukaz' ? ensureVoucherForLead_(item,p,row) : {code:'',validUntil:''};
+    const accessCode=item.type==='rezervace' ? ensureReservationAccessCode_(item,p,row) : '';
     if(item.type==='poukaz'){
       setLeadCell_(sh,row,headers,'voucherCode',voucher.code);
       setLeadCell_(sh,row,headers,'voucherValidUntil',voucher.validUntil);
     }
-    sendPublicEmail_({to:email,subject:paidSubject_(item.type),body:paidBody_(item.type,name,p,item,voucher.code)});
+    if(item.type==='rezervace'){
+      setLeadCell_(sh,row,headers,'accessCode',accessCode);
+      setLeadCell_(sh,row,headers,'accessCodeCreatedAt',new Date().toISOString());
+    }
+    sendPublicEmail_({to:email,subject:paidSubject_(item.type),body:paidBody_(item.type,name,p,item,voucher.code,accessCode)});
     setLeadCell_(sh,row,headers,'paidEmailSentAt',new Date().toISOString());
   }
 }
@@ -363,13 +390,13 @@ function confirmedBody_(type,name,p,item){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
   const payment=paymentLines_(item);
   if(type==='poukaz') return [hello,'','děkujeme za objednávku dárkového poukazu na hru Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:',leadPaymentIdentifier_(name,p,item),'','Po přijetí platby vám zašleme elektronický dárkový poukaz.','','Platnost poukazu je 12 měsíců od zaplacení.','','Děkujeme.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
-  return [hello,'','potvrzujeme rezervaci hry Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:','Grollova stopa - '+(name || 'rezervace'),'','Po přijetí platby vám pošleme organizační informace ke hře. Přístupový kód do hry neposíláme předem, aby se hra nespouštěla mimo start. Dostanete ho při převzetí herního batohu.','','Děkujeme a těšíme se na vás.','','Hravá Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
+  return [hello,'','potvrzujeme rezervaci hry Grollova zlatá stopa.','',summaryLines_(p),'',payment,'Platbu prosím zašlete na účet:','1025666081/5500','','Do zprávy pro příjemce uveďte:','Grollova stopa - '+(name || 'rezervace'),'','Po přijetí platby vám pošleme organizační informace ke hře. Přístupový kód do hry neposíláme předem, aby se hra nespouštěla mimo start. Dostanete ho při převzetí herního batohu.','','Děkujeme a těšíme se na vás.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].flat().filter(v=>v!==null).join('\n');
 }
 function paidSubject_(type){ if(type==='poukaz') return 'Dárkový poukaz Grollova zlatá stopa - platba přijata'; return 'Platba přijata - Grollova zlatá stopa'; }
-function paidBody_(type,name,p,item,voucherCode){
+function paidBody_(type,name,p,item,voucherCode,accessCode){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
-  if(type==='poukaz') return [hello,'','děkujeme, platbu za dárkový poukaz jsme přijali.','','Poukaz připravíme a pošleme vám samostatně.','','Obdarovaný si termín hry vybere později přes web nebo e-mailem na info@unikovka-plzen.cz.','','Děkujeme.','','Hravá Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].join('\n');
-  return [hello,'','děkujeme, platbu jsme přijali.','','Vaše rezervace hry Grollova zlatá stopa je potvrzená.','','Místo startu:','Hlavní vlakové nádraží Plzeň, hlavní hala, u sochy Železničáře.','','Doporučujeme mít nabitý telefon, mobilní data a ideálně powerbanku. Hra běží jako webová aplikace, není potřeba nic instalovat.','','Vezměte si prosím také papír a tužku na případné poznámky během luštění.','','Přístupový kód do hry dostanete až při převzetí herního batohu na startu.','','Těšíme se na vás a přejeme skvělou hru.','','Hravá Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].join('\n');
+  if(type==='poukaz') return [hello,'','děkujeme, platbu za dárkový poukaz jsme přijali.','','Poukaz připravíme a pošleme vám samostatně.','','Obdarovaný si termín hry vybere později přes web nebo e-mailem na info@unikovka-plzen.cz.','','Děkujeme.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].join('\n');
+  return [hello,'','děkujeme, platbu jsme přijali.','','Vaše rezervace hry Grollova zlatá stopa je potvrzená.','','Místo startu:','Hlavní vlakové nádraží Plzeň, hlavní hala, u sochy Železničáře.','','Doporučujeme mít nabitý telefon, mobilní data a ideálně powerbanku. Hra běží jako webová aplikace, není potřeba nic instalovat.','','Vezměte si prosím také papír a tužku na případné poznámky během luštění.','','Přístupový kód do hry bude připravený u herního batohu a dostanete ho až na startu.','','Těšíme se na vás a přejeme skvělou hru.','','Únikovka Plzeň','Grollova zlatá stopa','info@unikovka-plzen.cz','737 256 827'].join('\n');
 }
 function paymentLines_(item){ const label=amountLabel_(item && item.amountKc); return label ? ['Částka k úhradě:',label,''] : []; }
 function amountLabel_(value){ const raw=String(value||'').replace(/\s/g,'').replace(/Kč/gi,''); const n=Number(raw); if(!n) return ''; return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Kč'; }
