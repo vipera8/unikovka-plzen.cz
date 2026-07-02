@@ -1093,6 +1093,114 @@ function certFieldStyle(fieldName, variant=variantForState()){
   return `left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${font};text-align:${f.align};`;
 }
 
+const VOUCHER_TEMPLATE_SRC = 'assets/images/darkovy-voucher-template.png?v=190';
+const VOUCHER_TEMPLATE_SIZE = { width: 1448, height: 1086 };
+const VOUCHER_FIELDS = {
+  code: { x: 999, y: 184, w: 260, h: 42, font: 18, align: 'center' },
+  variant: { x: 805, y: 638, w: 430, h: 52, font: 26, align: 'center' },
+  validUntil: { x: 794, y: 733, w: 300, h: 52, font: 26, align: 'center' }
+};
+function voucherFieldStyle(fieldName){
+ const f=VOUCHER_FIELDS[fieldName];
+ const left=(f.x / VOUCHER_TEMPLATE_SIZE.width * 100).toFixed(4);
+ const top=(f.y / VOUCHER_TEMPLATE_SIZE.height * 100).toFixed(4);
+ const width=(f.w / VOUCHER_TEMPLATE_SIZE.width * 100).toFixed(4);
+ const height=(f.h / VOUCHER_TEMPLATE_SIZE.height * 100).toFixed(4);
+ const font=`clamp(${Math.max(9, Math.round(f.font * 0.58))}px, ${(f.font / VOUCHER_TEMPLATE_SIZE.width * 100).toFixed(3)}vw, ${f.font}px)`;
+ return `left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${font};text-align:${f.align};`;
+}
+function voucherDefaultValidUntil(){
+ const d=new Date();
+ d.setFullYear(d.getFullYear()+1);
+ return d.toLocaleDateString('cs-CZ', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function voucherFormData(){
+ const code=($('#voucherCode')?.value || 'HP-V-8F3K2A').trim();
+ const variant=($('#voucherVariant')?.value || 'Delší varianta').trim();
+ const validUntil=($('#voucherValidUntil')?.value || voucherDefaultValidUntil()).trim();
+ return {code, variant, validUntil};
+}
+function voucherTemplateHtml(data={}){
+ const v={code:data.code || 'HP-V-8F3K2A', variant:data.variant || 'Delší varianta', validUntil:data.validUntil || voucherDefaultValidUntil()};
+ return `<section class="voucher-template-preview" aria-label="Dárkový voucher" style="position:relative;width:min(100%,760px);aspect-ratio:${VOUCHER_TEMPLATE_SIZE.width} / ${VOUCHER_TEMPLATE_SIZE.height};margin:14px auto;overflow:hidden">
+  <img src="${VOUCHER_TEMPLATE_SRC}" alt="Dárkový voucher Grollova zlatá stopa" style="display:block;width:100%;height:100%;object-fit:contain">
+  <div id="voucherPreviewCode" class="cert-field" style="${voucherFieldStyle('code')}">${escapeHtml(v.code)}</div>
+  <div id="voucherPreviewVariant" class="cert-field" style="${voucherFieldStyle('variant')}">${escapeHtml(v.variant)}</div>
+  <div id="voucherPreviewValidUntil" class="cert-field" style="${voucherFieldStyle('validUntil')}">${escapeHtml(v.validUntil)}</div>
+ </section>`;
+}
+function openVoucherTool(){
+ const validUntil=voucherDefaultValidUntil();
+ modal(`<h2>Dárkový voucher</h2><p class="small muted">Náhled pro kontrolu umístění textů. Údaje můžete přepsat a stáhnout hotový obrázek voucheru.</p>
+  <div class="card">
+   <label>Číslo voucheru</label>
+   <input id="voucherCode" type="text" value="HP-V-8F3K2A" oninput="updateVoucherPreview()">
+   <label style="display:block;margin-top:10px">Varianta</label>
+   <select id="voucherVariant" onchange="updateVoucherPreview()" style="width:100%;border:1px solid rgba(64,35,10,.25);border-radius:15px;padding:14px;background:#fffaf0;color:var(--ink)">
+    <option>Delší varianta</option>
+    <option>Krátká varianta</option>
+   </select>
+   <label style="display:block;margin-top:10px">Platnost do</label>
+   <input id="voucherValidUntil" type="text" value="${escapeHtml(validUntil)}" oninput="updateVoucherPreview()">
+  </div>
+  <div id="voucherPreview">${voucherTemplateHtml({validUntil})}</div>
+  <div class="grid two">
+   <button class="btn" onclick="downloadVoucher()">Stáhnout voucher</button>
+   <button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>
+  </div>`, false);
+}
+function updateVoucherPreview(){
+ const target=$('#voucherPreview');
+ if(target) target.innerHTML=voucherTemplateHtml(voucherFormData());
+}
+function voucherFileName(data){
+ const code=(data.code || 'voucher').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase() || 'voucher';
+ return `darkovy-voucher-${code}.png`;
+}
+async function createVoucherBlob(data=voucherFormData()){
+ const canvas=document.createElement('canvas');
+ canvas.width=VOUCHER_TEMPLATE_SIZE.width;
+ canvas.height=VOUCHER_TEMPLATE_SIZE.height;
+ const ctx=canvas.getContext('2d');
+ const bg=await loadImage(VOUCHER_TEMPLATE_SRC);
+ ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+ ctx.fillStyle='#2b1608';
+ ctx.textBaseline='middle';
+ const draw=(name, text)=>{
+  const f=VOUCHER_FIELDS[name];
+  const size=fitCanvasFont(ctx, 700, f.font, 12, text, f.w);
+  ctx.font=`700 ${size}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign=f.align || 'center';
+  const x=f.align==='left' ? f.x : f.x + f.w / 2;
+  ctx.fillText(String(text || ''), x, f.y + f.h / 2);
+ };
+ draw('code', data.code);
+ draw('variant', data.variant);
+ draw('validUntil', data.validUntil);
+ return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob ? resolve(blob) : reject(new Error('Voucher export failed')), 'image/png'));
+}
+async function downloadVoucher(){
+ try{
+  const data=voucherFormData();
+  const blob=await createVoucherBlob(data);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=voucherFileName(data);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast('Voucher se stáhl jako obrázek.');
+ }catch(e){
+  console.error(e);
+  toast('Voucher se nepodařilo stáhnout.');
+ }
+}
+window.openVoucherTool = openVoucherTool;
+window.updateVoucherPreview = updateVoucherPreview;
+window.downloadVoucher = downloadVoucher;
+
 function drawCertificate(data){
  const canvas = document.getElementById('certCanvas');
  if(!canvas) return;
@@ -1327,6 +1435,7 @@ function adminPanelHtml(){
  return `<h2>Admin panel</h2>
   <div class="grid two admin-actions">
    <button class="btn secondary" onclick="loadOnlineAdmin()">Obnovit online přehled</button>
+   <button class="btn secondary" onclick="openVoucherTool()">Náhled voucheru</button>
   </div>
   ${safeCard('Náhled zastávek', ()=>adminStationSelect())}
   <div id="onlineAdminPanel" class="admin-card"><h3>Online týmy</h3><p class="small muted">Načítám online přehled týmů...</p></div>

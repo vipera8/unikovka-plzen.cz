@@ -1,5 +1,7 @@
 ﻿const ADMIN_PASSWORD_PROPERTY = 'ADMIN_PASSWORD';
 const LEAD_NOTIFICATION_EMAIL = 'info@unikovka-plzen.cz';
+const PUBLIC_EMAIL_NAME = 'Únikovka Plzeň';
+const PUBLIC_REPLY_TO = 'info@unikovka-plzen.cz';
 const SHEETS = {
   leaderboard: 'Leaderboard', teams: 'Teams', events: 'Events',
   accessCodes: 'AccessCodes', leads: 'Leads', secrets: 'StationSecrets',
@@ -124,20 +126,20 @@ function adminStationData_(e){
 function saveLead_(e){
   const sh=getSheet_(SHEETS.leads,HEADERS.leads); const payloadText=String(e.parameter.payload||'{}'); const p=parseJson_(payloadText,{});
   const type=String(e.parameter.type||'kontakt'); const name=String(p['Jméno a příjmení']||p['Jméno objednatele']||p['Kontaktní osoba']||p['Jméno']||p['Název firmy']||'');
-  const email=String(p['E-mail']||''), phone=String(p['Telefon']||''); sh.appendRow([czDateTime_(),type,name,email,phone,payloadText,'new']);
-  if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) MailApp.sendEmail({to:LEAD_NOTIFICATION_EMAIL,subject:'Hravá Plzeň - '+type,body:Object.keys(p).map(k=>k+': '+p[k]).join('\n')});
-  if(email && email.indexOf('@')>-1) MailApp.sendEmail({to:email,subject:leadCustomerSubject_(type),body:leadCustomerBody_(type,name,p)});
+  const email=String(p['E-mail']||''), phone=String(p['Telefon']||''); sh.appendRow([czDateTime_(),type,name,email,phone,payloadText,'nové']);
+  if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) MailApp.sendEmail({to:LEAD_NOTIFICATION_EMAIL,subject:'Únikovka Plzeň - '+type,body:Object.keys(p).map(k=>k+': '+p[k]).join('\n'),name:PUBLIC_EMAIL_NAME,replyTo:PUBLIC_REPLY_TO});
+  if(email && email.indexOf('@')>-1) MailApp.sendEmail({to:email,subject:leadCustomerSubject_(type),body:leadCustomerBody_(type,name,p),name:PUBLIC_EMAIL_NAME,replyTo:PUBLIC_REPLY_TO});
   return json_({ok:true},e);
 }
 function leadCustomerSubject_(type){
   if(type==='rezervace') return 'Grollova zlatá stopa - přijali jsme vaši rezervaci';
   if(type==='poukaz') return 'Grollova zlatá stopa - přijali jsme objednávku dárkového poukazu';
   if(type==='firma') return 'Grollova zlatá stopa - přijali jsme firemní poptávku';
-  return 'Hravá Plzeň - přijali jsme vaši zprávu';
+  return 'Únikovka Plzeň - přijali jsme vaši zprávu';
 }
 function leadCustomerBody_(type,name,p){
   const hello=name ? 'Dobrý den, '+name+',' : 'Dobrý den,';
-  const footer='\n\nHravá Plzeň\nGrollova zlatá stopa\nE-mail: info@unikovka-plzen.cz\nTelefon: 737 256 827\n\nToto je automatické potvrzení přijetí formuláře.';
+  const footer='\n\nÚnikovka Plzeň\nGrollova zlatá stopa\nE-mail: info@unikovka-plzen.cz\nTelefon: 737 256 827\n\nToto je automatické potvrzení přijetí formuláře.';
   if(type==='rezervace'){
     return hello+'\n\nDěkujeme za rezervaci hry Grollova zlatá stopa.\n\nVaši poptávku jsme přijali. Nejdříve ověříme požadovaný termín a poté vám pošleme potvrzení s platebními údaji a dalšími informacemi ke startu hry.\n\nShrnutí rezervace:\n'+leadPayloadLines_(p)+footer;
   }
