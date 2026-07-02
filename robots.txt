@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.unikovka-plzen.cz/sitemap.xml
