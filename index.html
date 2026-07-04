@@ -9,6 +9,9 @@
   <meta name="keywords" content="únikovka Plzeň, venkovní únikovka Plzeň, venkovní úniková hra Plzeň, úniková hra Plzeň, městská hra Plzeň, co dělat v Plzni, zážitky Plzeň, teambuilding Plzeň, dárkový poukaz Plzeň" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="author" content="Únikovka Plzeň" />
+  <meta name="geo.region" content="CZ-32" />
+  <meta name="geo.placename" content="Plzeň" />
+  <meta name="ICBM" content="49.7384, 13.3736" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="cs_CZ" />
   <meta property="og:url" content="https://www.unikovka-plzen.cz/" />
@@ -41,6 +44,17 @@
         "url": "https://www.unikovka-plzen.cz/",
         "name": "Únikovka Plzeň | Venkovní úniková hra Grollova zlatá stopa",
         "description": "Venkovní úniková hra v Plzni s batohem plným rekvizit, šifer a zámků.",
+        "keywords": [
+          "únikovka Plzeň",
+          "venkovní únikovka Plzeň",
+          "venkovní úniková hra Plzeň",
+          "městská hra Plzeň",
+          "zážitky Plzeň"
+        ],
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://www.unikovka-plzen.cz/assets/images/Groll_pro_web.jpg"
+        },
         "isPartOf": {
           "@id": "https://www.unikovka-plzen.cz/#website"
         },
@@ -59,7 +73,10 @@
         "logo": "https://www.unikovka-plzen.cz/assets/images/Groll_logo_na_sirku.jpg",
         "email": "info@unikovka-plzen.cz",
         "telephone": "+420737256827",
+        "description": "Venkovní úniková hra Grollova zlatá stopa v historickém centru Plzně.",
         "priceRange": "1200-1900 Kč",
+        "currenciesAccepted": "CZK",
+        "paymentAccepted": "bank transfer, cash, QR payment",
         "address": {
           "@type": "PostalAddress",
           "streetAddress": "Partyzánská 356/25",
@@ -73,7 +90,10 @@
         },
         "sameAs": [
           "https://www.facebook.com/profile.php?id=61591459980333"
-        ]
+        ],
+        "makesOffer": {
+          "@id": "https://www.unikovka-plzen.cz/#service"
+        }
       },
       {
         "@type": "Service",
@@ -92,7 +112,39 @@
           "@type": "City",
           "name": "Plzeň"
         },
+        "category": [
+          "úniková hra",
+          "venkovní únikovka",
+          "městská hra",
+          "zážitek v Plzni",
+          "teambuilding"
+        ],
+        "audience": [
+          {
+            "@type": "Audience",
+            "audienceType": "páry"
+          },
+          {
+            "@type": "Audience",
+            "audienceType": "rodiny"
+          },
+          {
+            "@type": "Audience",
+            "audienceType": "přátelé"
+          },
+          {
+            "@type": "Audience",
+            "audienceType": "firemní týmy"
+          }
+        ],
         "description": "Venkovní úniková hra v historickém centru Plzně s batohem plným rekvizit, šifer a zámků.",
+        "image": "https://www.unikovka-plzen.cz/assets/images/Groll_pro_web.jpg",
+        "termsOfService": "https://www.unikovka-plzen.cz/#/obchodni-podminky",
+        "potentialAction": {
+          "@type": "ReserveAction",
+          "target": "https://www.unikovka-plzen.cz/#rezervace",
+          "name": "Rezervovat hru"
+        },
         "offers": {
           "@type": "OfferCatalog",
           "name": "Varianty hry Grollova zlatá stopa",
@@ -130,6 +182,27 @@
               "url": "https://www.unikovka-plzen.cz/#cenik"
             }
           ]
+        }
+      },
+      {
+        "@type": "TouristAttraction",
+        "@id": "https://www.unikovka-plzen.cz/#attraction",
+        "name": "Grollova zlatá stopa",
+        "url": "https://www.unikovka-plzen.cz/",
+        "image": "https://www.unikovka-plzen.cz/assets/images/Groll_pro_web.jpg",
+        "description": "Venkovní únikovka a městská hra v historickém centru Plzně.",
+        "isAccessibleForFree": false,
+        "touristType": [
+          "páry",
+          "rodiny",
+          "přátelé",
+          "turisté",
+          "firemní týmy"
+        ],
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Plzeň",
+          "addressCountry": "CZ"
         }
       },
       {
