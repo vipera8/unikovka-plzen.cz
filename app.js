@@ -1809,7 +1809,18 @@ function openReviewTarget(kind){
  const url=reviewTarget(kind);
  if(!url){ toast('Odkaz na hodnocení zatím není nastavený.'); return; }
  addLog('review_clicked', {kind});
+ if(kind==='facebook'){ openFacebookReviewTarget(url); return; }
  window.open(url, '_blank', 'noopener');
+}
+function openFacebookReviewTarget(url){
+ const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+ if(!isMobile){ window.open(url, '_blank', 'noopener'); return; }
+ let returned=false;
+ const fallback=setTimeout(()=>{ if(!returned) window.open(url, '_blank', 'noopener'); }, 1200);
+ const stopFallback=()=>{ returned=true; clearTimeout(fallback); document.removeEventListener('visibilitychange', stopFallback); window.removeEventListener('pagehide', stopFallback); };
+ document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopFallback(); }, {once:true});
+ window.addEventListener('pagehide', stopFallback, {once:true});
+ window.location.href=`fb://facewebmodal/f?href=${encodeURIComponent(url)}`;
 }
 
 let selfieStream=null;
