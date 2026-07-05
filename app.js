@@ -6,6 +6,8 @@ const ADMIN_KEY = 'grollovaCestaAdminLog.v1';
 const ACCESS_CODE_KEY = 'grollovaCestaAccessCode.v1';
 const GAME_VARIANT_KEY = 'grollovaCestaVariant.v1';
 const ADMIN_PREVIEW_VARIANT_KEY = 'grollovaCestaAdminPreviewVariant.v1';
+const DEVICE_ID_KEY = 'grollovaCestaDeviceId.v1';
+const DEVICE_CHECK_MS = 15000;
 const SHORT_VARIANT_STATIONS = [1,2,4,6,7,9,13];
 const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 const now = () => Date.now();
@@ -16,6 +18,15 @@ const readJson = (key, fallback) => {
  catch(e){ localStorage.removeItem(key); return fallback; }
 };
 function activeAccessCode(){ return sessionStorage.getItem(ACCESS_CODE_KEY) || localStorage.getItem(ACCESS_CODE_KEY) || ''; }
+function deviceId(){
+ let id=localStorage.getItem(DEVICE_ID_KEY);
+ if(!id){
+  id=(globalThis.crypto?.randomUUID?.() || ('device-'+Date.now()+'-'+Math.random().toString(36).slice(2))).toString();
+  localStorage.setItem(DEVICE_ID_KEY,id);
+ }
+ return id;
+}
+function withDevice(params={}){ return {...params, deviceId:deviceId()}; }
 function stateKeyForCode(code){ return code ? `${LS_KEY}.${normalize(code)}` : LS_KEY; }
 const getState = () => activeAccessCode() ? readJson(stateKeyForCode(activeAccessCode()), null) : readJson(LS_KEY, null);
 const saveState = s => { if(s?.variant){ sessionStorage.setItem(GAME_VARIANT_KEY, s.variant); localStorage.setItem(GAME_VARIANT_KEY, s.variant); } const key=stateKeyForCode(s?.accessCode || activeAccessCode()); localStorage.setItem(key, JSON.stringify(s)); localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
@@ -143,6 +154,7 @@ function syncTeamState(s){
  const data=publicTeamState(s);
  if(!data?.id) return;
  fireAndForget(monitorUrl('state', {
+  deviceId:deviceId(),
   id:data.id,
   team:data.team,
   accessCode:data.accessCode,
@@ -166,6 +178,7 @@ function sendMonitorEvent(row, s){
  const stationId=row.station || s.currentStation || 1;
  const st=station(Number(stationId));
  fireAndForget(monitorUrl('event', {
+  deviceId:deviceId(),
   teamId:s.id,
   team:s.team || '',
   accessCode:s.accessCode || '',
@@ -306,10 +319,12 @@ function setRoute(path, replace=false){
 }
 function renderGameApp(){
  if(!hasGameAccess()){
+  stopDeviceWatchdog();
   setRoute('/hra', true);
   return renderAccessGate();
  }
  const s=getState();
+ startDeviceWatchdog();
  if(!s) return renderStart();
  if(s.finished) return renderFinish();
  renderStation();
@@ -336,9 +351,39 @@ window.addEventListener('storage', e=>{
 const ACCESS_KEY='grollovaCestaAccess.v1';
 function hasGameAccess(){ return localStorage.getItem(ACCESS_KEY)==='ok'; }
 async function validateAccessCode(code){
- return await backendRequest('validateAccessCode', {accessCode:normalize(code), _:Date.now()});
+ return await backendRequest('validateAccessCode', withDevice({accessCode:normalize(code), _:Date.now()}));
 }
 function grantGameAccess(){ localStorage.setItem(ACCESS_KEY,'ok'); }
+let deviceWatchdogTimer=null;
+function startDeviceWatchdog(){
+ clearInterval(deviceWatchdogTimer);
+ const code=activeAccessCode();
+ if(!code || currentRoute()!=='/hra/app') return;
+ const check=async()=>{
+  const active=activeAccessCode();
+  if(!active || currentRoute()!=='/hra/app') return;
+  try{
+   const data=await backendRequest('deviceStatus', withDevice({accessCode:active, _:Date.now()}));
+   if(data?.error==='device_in_use') handleDeviceTaken();
+  }catch(e){}
+ };
+ deviceWatchdogTimer=setInterval(check, DEVICE_CHECK_MS);
+ setTimeout(check, 1500);
+}
+function stopDeviceWatchdog(){
+ clearInterval(deviceWatchdogTimer);
+ deviceWatchdogTimer=null;
+}
+function handleDeviceTaken(){
+ stopDeviceWatchdog();
+ closeModal();
+ localStorage.removeItem(ACCESS_KEY);
+ sessionStorage.removeItem(ACCESS_CODE_KEY);
+ localStorage.removeItem(ACCESS_CODE_KEY);
+ setRoute('/', true);
+ renderWebsite();
+ toast('Hra byla převzata na jiném telefonu.');
+}
 function openGameGate(){
  setRoute('/hra');
  renderAccessGate();
@@ -346,6 +391,7 @@ function openGameGate(){
  document.body.classList.remove('web-menu-open');
 }
 function backToWebsite(){
+ stopDeviceWatchdog();
  setRoute('/');
  renderWebsite();
  window.scrollTo({top:0,behavior:'smooth'});
@@ -473,24 +519,26 @@ async function submitLeadForm(e,type,message){
  }
 }
 function renderAccessGate(){
- app.innerHTML = `<main class="phone access-gate"><section class="content"><div class="hero hero-intro"><h1>Spustit hru</h1><p>Zadejte přístupový kód, který jste obdrželi po rezervaci.</p></div><div class="card"><label>Přístupový kód</label><input id="accessCode" type="text" placeholder="KÓD" autocomplete="one-time-code"><button id="accessContinue" class="btn" type="button" style="margin-top:12px">Pokračovat</button><p id="accessError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px">Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.</p><p class="small muted">Kód slouží pouze pro spuštění zaplacené hry.</p></div><button class="btn ghost" type="button" onclick="backToWebsite()">Zpět na web</button></section></main>`;
+ app.innerHTML = `<main class="phone access-gate"><section class="content"><div class="hero hero-intro"><h1>Spustit hru</h1><p>Zadejte přístupový kód, který jste obdrželi po rezervaci.</p></div><div class="card"><label>Přístupový kód</label><input id="accessCode" type="text" placeholder="KÓD" autocomplete="one-time-code"><button id="accessContinue" class="btn" type="button" style="margin-top:12px">Pokračovat</button><p id="accessError" class="small" style="display:none;color:#b3261e;font-weight:800;margin-top:10px">Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.</p><div id="accessTakeover" class="card" style="display:none"><p><b>Hra už běží na jiném telefonu.</b></p><p>Jeden přístupový kód může být aktivní pouze na jednom zařízení. Pokud se hlavní telefon vybil, ztratil připojení nebo chcete ve hře pokračovat tady, můžete hru převzít na tento telefon.</p><button class="btn danger" type="button" onclick="verifyAccessCode(true)">Převzít hru na tento telefon</button></div><p class="small muted">Kód slouží pouze pro spuštění zaplacené hry.</p></div><button class="btn ghost" type="button" onclick="backToWebsite()">Zpět na web</button></section></main>`;
  setTimeout(()=>{
   const input=$('#accessCode');
   const btn=$('#accessContinue');
   if(input) input.focus();
-  if(btn) btn.addEventListener('click', verifyAccessCode);
-  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); verifyAccessCode(); }});
+  if(btn) btn.addEventListener('click', ()=>verifyAccessCode(false));
+  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); verifyAccessCode(false); }});
  },50);
 }
-async function verifyAccessCode(){
+async function verifyAccessCode(takeover=false){
  const input=$('#accessCode');
  const btn=$('#accessContinue');
  const err=$('#accessError');
+ const takeoverBox=$('#accessTakeover');
  const val=input?.value || '';
  let result=null;
+ if(takeoverBox) takeoverBox.style.display='none';
  if(btn) btn.disabled=true;
  try{
-  result=await validateAccessCode(val);
+  result=await backendRequest('validateAccessCode', withDevice({accessCode:normalize(val), takeover:takeover?1:0, _:Date.now()}));
  }catch(e){
   if(err){ err.textContent='Kód se nepodařilo ověřit. Zkontrolujte připojení k internetu a zkuste to znovu.'; err.style.display='block'; }
   toast('Kód se nepodařilo ověřit. Zkuste to znovu.');
@@ -499,6 +547,12 @@ async function verifyAccessCode(){
   return false;
  }
  if(btn) btn.disabled=false;
+ if(result?.error==='device_in_use'){
+  if(err){ err.textContent='Tato hra už běží na jiném telefonu.'; err.style.display='block'; }
+  if(takeoverBox) takeoverBox.style.display='block';
+  toast('Hra už běží na jiném telefonu.');
+  return false;
+ }
  if(!result?.ok){
   if(err){ err.textContent='Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.'; err.style.display='block'; }
   toast('Tento kód není platný. Zkontrolujte ho prosím a zkuste to znovu.');
@@ -750,7 +804,7 @@ async function fetchHintText(id,num){
  if(hintText(s,id,num)) return hintText(s,id,num);
  const key=`${id}:${num}`;
  if(pendingHints.has(key)) return pendingHints.get(key);
- const request=backendRequest('hint', {accessCode:s.accessCode || activeAccessCode(), station:id, num, _:Date.now()})
+ const request=backendRequest('hint', withDevice({accessCode:s.accessCode || activeAccessCode(), station:id, num, _:Date.now()}))
   .then(data=>{
    if(!data?.ok) throw new Error(data?.error || 'hint_failed');
    const latest=getState();
@@ -768,7 +822,7 @@ async function fetchSolutionText(id){
  if(override) return override;
  if(solutionText(s,id)) return solutionText(s,id);
  if(pendingSolutions.has(id)) return pendingSolutions.get(id);
- const request=backendRequest('solution', {accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()})
+ const request=backendRequest('solution', withDevice({accessCode:s.accessCode || activeAccessCode(), station:id, _:Date.now()}))
   .then(data=>{
    if(!data?.ok) throw new Error(data?.error || 'solution_failed');
    const latest=getState();
@@ -806,6 +860,7 @@ async function openHint(id,num){
   if(num>=hintCount) prefetchSolution(id);
   returnToGame();
  }catch(e){
+  if(e?.message==='device_in_use'){ handleDeviceTaken(); return; }
   toast('Nápovědu se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
  }
 }
@@ -822,6 +877,7 @@ async function openSolution(id, btn){
   addLog('solution_opened');
   returnToGame();
  }catch(e){
+  if(e?.message==='device_in_use'){ handleDeviceTaken(); return; }
   toast('Řešení se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
  }
 }
@@ -901,7 +957,12 @@ async function checkCode(expectedStationId, btn){
  }
  let ok=false;
  try{
-  const data=await backendRequest('checkStationCode', {accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()});
+  const data=await backendRequest('checkStationCode', withDevice({accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()}));
+  if(data?.error==='device_in_use'){
+   window._stationCodeChecking=false;
+   handleDeviceTaken();
+   return;
+  }
   ok=!!data?.ok;
  }catch(e){
   toast('Kód se nepodařilo ověřit. Zkontrolujte připojení a zkuste to znovu.');
@@ -992,7 +1053,12 @@ async function finishCode(expectedStationId, btn){
   return;
  }
  try{
-  const data=await backendRequest('checkStationCode', {accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()});
+  const data=await backendRequest('checkStationCode', withDevice({accessCode:s.accessCode || activeAccessCode(), station:st.id, value:val, _:Date.now()}));
+  if(data?.error==='device_in_use'){
+   window._stationCodeChecking=false;
+   handleDeviceTaken();
+   return;
+  }
   if(data?.ok){
    closeModal();
    window._stationCodeChecking=false;
@@ -1010,7 +1076,15 @@ async function finishCode(expectedStationId, btn){
   if(input) input.disabled=false;
  }
 }
-function titleFor(ms){ const h=ms/36e5; if(h<=2.5) return 'Mistři sládkové'; if(h<=3) return 'Grollova pravá ruka'; if(h<=3.5) return 'Pivovarští tovaryši'; if(h<=4) return 'Hledači ztracené várky'; return 'Stateční poutníci za pivem'; }
+function titleFor(ms, variant=variantForState()){
+ const h=ms/36e5;
+ const firstLimit=variant==='short' ? 1.5 : 3.5;
+ if(h<=firstLimit) return 'Mistři sládkové';
+ if(h<=firstLimit+0.5) return 'Grollova pravá ruka';
+ if(h<=firstLimit+1) return 'Pivovarští tovaryši';
+ if(h<=firstLimit+1.5) return 'Hledači ztracené várky';
+ return 'Stateční poutníci za pivem';
+}
 function renderFinish(){
  const s=getState();
  const total=(s.finishTime||now())-s.startTime;
@@ -1697,14 +1771,15 @@ function buildLeaderboardEntry(){
  const total=(s.finishTime||now())-s.startTime;
  const hintCount = Object.values(s.hints || {}).reduce((sum,n)=>sum+(Number(n)||0),0);
  const solutionCount = Object.values(s.solutions || {}).filter(Boolean).length;
+ const variant=variantForState(s);
  return {
   id:s.id || ('team-'+(s.team||'')+'-'+(s.startTime||now())),
   team:s.team || 'Bez názvu',
-  variant:variantForState(s),
+  variant,
   total,
   hints:hintCount,
   solutions:solutionCount,
-  title:titleFor(total),
+  title:titleFor(total, variant),
   date:new Date(s.finishTime||now()).toISOString()
  };
 }
@@ -1777,7 +1852,8 @@ async function shareResult(){
  if(!adminData && (!s || !s.finished)){ toast('Výsledek zatím není k dispozici.'); return; }
  const total=adminData ? 11565000 : (s.finishTime||now())-s.startTime;
  const team=adminData?.team || s.team;
- const title=adminData?.title || titleFor(total);
+ const variant=adminData?.variant || variantForState(s);
+ const title=adminData?.title || titleFor(total, variant);
  const timeText=adminData?.time || fmtTime(total);
  const text=`Tým ${team} dokončil Grollovu zlatou stopu za ${timeText} a získal titul ${title}.`;
  modal(`<h2>Sdílet výsledek</h2><p>${escapeHtml(text)}</p><div class="share-grid">
@@ -2026,9 +2102,9 @@ function certificateData(){
   time:fmtTime(total),
   hints:Object.values(s.hints || {}).reduce((sum,n)=>sum+(Number(n)||0),0),
   solutions:Object.values(s.solutions || {}).filter(Boolean).length,
-  title:titleFor(total),
-   variant:variantForState(s),
-   imageSrc:certificateImageSrc(variantForState(s))
+  title:titleFor(total, variantForState(s)),
+  variant:variantForState(s),
+  imageSrc:certificateImageSrc(variantForState(s))
  };
 }
 function loadImage(src){
@@ -2112,7 +2188,8 @@ async function shareCertificateNative(){
  if(!adminData && (!s || !s.finished)){ toast('Výsledek zatím není k dispozici.'); return; }
  const total=adminData ? 11565000 : (s.finishTime||now())-s.startTime;
  const team=adminData?.team || s.team;
- const title=adminData?.title || titleFor(total);
+ const variant=adminData?.variant || variantForState(s);
+ const title=adminData?.title || titleFor(total, variant);
  const timeText=adminData?.time || fmtTime(total);
  const text=`Tým ${team} dokončil Grollovu zlatou stopu za ${timeText} a získal titul ${title}.`;
  try{

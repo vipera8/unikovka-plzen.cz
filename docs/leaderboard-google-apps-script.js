@@ -12,7 +12,7 @@ const SHEETS = {
   secretImages: 'SecretImages'
 };
 const HEADERS = {
-  accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt'],
+  accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt','activeDeviceId','activeDeviceAt'],
   leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil','accessCode','accessCodeCreatedAt'],
   vouchers: ['voucherCode','status','buyerName','buyerEmail','phone','amountKc','variant','createdAt','paidAt','validUntil','leadRow','usedAt','notes'],
   secrets: ['stationId','title','unlockCode','hintsJson','solutionJson'],
@@ -113,6 +113,7 @@ function installLeadStatusTrigger(){ ScriptApp.getProjectTriggers().filter(t=>t.
 function doGet(e){
   const a=String(e.parameter.action||'list');
   if(a==='validateAccessCode') return validateAccessCode_(e);
+  if(a==='deviceStatus') return deviceStatus_(e);
   if(a==='checkStationCode') return checkStationCode_(e);
   if(a==='hint') return hint_(e);
   if(a==='solution') return solution_(e);
@@ -173,18 +174,42 @@ function variantFromParam_(p){ const v=String(p.variant||p.gameVariant||'').toLo
 function variantPrefix_(variant){ return variant==='short' ? 'K' : 'D'; }
 function variantLabel_(variant){ return variant==='short' ? 'krátká varianta' : 'delší varianta'; }
 function touchAccessCode_(code, values){ const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const vals=sh.getDataRange().getValues(); const headers=vals[0].map(String); const target=normalize_(code); for(let r=1;r<vals.length;r++){ if(normalize_(vals[r][0])===target){ Object.keys(values).forEach(k=>{ const c=headers.indexOf(k); if(c>=0) sh.getRange(r+1,c+1).setValue(values[k]); }); return; } } }
+function deviceId_(e){ return String(e.parameter.deviceId||'').trim(); }
+function accessCodeDeviceConflict_(rec, deviceId){ const active=String(rec && rec.activeDeviceId || '').trim(); return !!(deviceId && active && active!==deviceId); }
+function ensureActiveDevice_(accessCode, e){
+  const rec=accessCodeRecord_(accessCode);
+  if(!rec) return {ok:false,error:'invalid_access_code'};
+  const deviceId=deviceId_(e);
+  if(accessCodeDeviceConflict_(rec, deviceId)) return {ok:false,error:'device_in_use',canTakeover:true};
+  if(deviceId) touchAccessCode_(accessCode,{activeDeviceId:deviceId,activeDeviceAt:new Date().toISOString()});
+  return {ok:true,rec};
+}
 
 function validateAccessCode_(e){
   const code=normalize_(e.parameter.accessCode||e.parameter.code||'');
   const rec=accessCodeRecord_(code);
   if(!rec || String(rec.status||'').toLowerCase()!=='active') return json_({ok:false,error:'invalid_code'},e);
   const variant=String(rec.variant||'') || variantFromCode_(code, rec.orderType||'');
-  touchAccessCode_(code,{lastUsedAt:new Date().toISOString(),variant});
+  const deviceId=deviceId_(e), takeover=String(e.parameter.takeover||'')==='1';
+  if(accessCodeDeviceConflict_(rec, deviceId) && !takeover) return json_({ok:false,error:'device_in_use',canTakeover:true,accessCode:code,variant},e);
+  const touch={lastUsedAt:new Date().toISOString(),variant};
+  if(deviceId){ touch.activeDeviceId=deviceId; touch.activeDeviceAt=new Date().toISOString(); }
+  touchAccessCode_(code,touch);
   return json_({ok:true,accessCode:code,variant,customerName:String(rec.customerName||''),email:String(rec.email||''),orderType:String(rec.orderType||'')},e);
+}
+function deviceStatus_(e){
+  const code=normalize_(e.parameter.accessCode||e.parameter.code||'');
+  const rec=accessCodeRecord_(code);
+  if(!rec) return json_({ok:false,error:'invalid_access_code'},e);
+  const deviceId=deviceId_(e);
+  if(accessCodeDeviceConflict_(rec, deviceId)) return json_({ok:false,error:'device_in_use',canTakeover:true},e);
+  if(deviceId) touchAccessCode_(code,{activeDeviceId:deviceId,activeDeviceAt:new Date().toISOString(),lastUsedAt:new Date().toISOString()});
+  return json_({ok:true},e);
 }
 function checkStationCode_(e){
   const accessCode=normalize_(e.parameter.accessCode||'');
-  if(!accessCodeRecord_(accessCode)) return json_({ok:false,error:'invalid_access_code'},e);
+  const device=ensureActiveDevice_(accessCode,e);
+  if(!device.ok) return json_(device,e);
   const station=Number(e.parameter.station||e.parameter.stationId||0);
   const value=normalize_(e.parameter.value||e.parameter.code||'');
   const secret=stationSecret_(station);
@@ -194,7 +219,8 @@ function checkStationCode_(e){
 }
 function hint_(e){
   const accessCode=normalize_(e.parameter.accessCode||'');
-  if(!accessCodeRecord_(accessCode)) return json_({ok:false,error:'invalid_access_code'},e);
+  const device=ensureActiveDevice_(accessCode,e);
+  if(!device.ok) return json_(device,e);
   const station=Number(e.parameter.station||e.parameter.stationId||0), num=Math.max(1,Number(e.parameter.num||1));
   const secret=stationSecret_(station), hints=withSecretImages_(parseJson_(secret && secret.hintsJson,[]));
   if(!hints[num-1]) return json_({ok:false,error:'missing_hint'},e);
@@ -202,7 +228,8 @@ function hint_(e){
 }
 function solution_(e){
   const accessCode=normalize_(e.parameter.accessCode||'');
-  if(!accessCodeRecord_(accessCode)) return json_({ok:false,error:'invalid_access_code'},e);
+  const device=ensureActiveDevice_(accessCode,e);
+  if(!device.ok) return json_(device,e);
   const station=Number(e.parameter.station||e.parameter.stationId||0), secret=stationSecret_(station);
   if(!secret) return json_({ok:false,error:'invalid_station'},e);
   return json_({ok:true,station,solution:withSecretImages_(parseJson_(secret.solutionJson,''))},e);
@@ -286,6 +313,8 @@ function createAccessCodes_(p){
 }
 function saveTeamState_(e){
   const id=String(e.parameter.id||''); if(!id) return json_({ok:false,error:'missing id'},e); const sh=getSheet_(SHEETS.teams,HEADERS.teams); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const accessCode=normalize_(e.parameter.accessCode||''); const row=findRowById_(sh,id);
+  const device=ensureActiveDevice_(accessCode,e);
+  if(!device.ok) return json_(device,e);
   const startTime=String(e.parameter.startTime||''), updatedAt=String(e.parameter.updatedAt||new Date().toISOString()), finishTime=String(e.parameter.finishTime||''); const variant=variantFromParam_(e.parameter);
   const item={id,team:String(e.parameter.team||''),accessCode,variant,currentStation:Number(e.parameter.currentStation||1),stationTitle:String(e.parameter.stationTitle||''),startTime,updatedAt,finished:String(e.parameter.finished||'0'),finishTime,hints:String(e.parameter.hints||'{}'),solutions:String(e.parameter.solutions||'{}'),wrong:String(e.parameter.wrong||'{}'),wrongTotal:Number(e.parameter.wrongTotal||0),completed:String(e.parameter.completed||'[]'),lastPos:String(e.parameter.lastPos||''),startTimeCz:formatDateTimeCz_(startTime),updatedAtCz:formatDateTimeCz_(updatedAt),finishTimeCz:formatDateTimeCz_(finishTime)};
   const values=headers.map(h=>item[h]!==undefined?item[h]:'');
@@ -294,7 +323,7 @@ function saveTeamState_(e){
   if(String(e.parameter.finished||'0')==='1' && finishTime) sendReviewEmailIfNeeded_(accessCode, String(e.parameter.team||''), variant);
   return json_({ok:true},e);
 }
-function saveEvent_(e){ const sh=getSheet_(SHEETS.events,HEADERS.events); const time=String(e.parameter.time||new Date().toISOString()); const item={time,timeCz:formatDateTimeCz_(time),teamId:String(e.parameter.teamId||''),team:String(e.parameter.team||''),accessCode:normalize_(e.parameter.accessCode||''),variant:variantFromParam_(e.parameter),type:String(e.parameter.type||''),eventName:String(e.parameter.eventName||''),station:Number(e.parameter.station||1),stationTitle:String(e.parameter.stationTitle||''),hint:String(e.parameter.hint||''),value:String(e.parameter.value||''),detail:String(e.parameter.detail||'{}')}; const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); return json_({ok:true},e); }
+function saveEvent_(e){ const sh=getSheet_(SHEETS.events,HEADERS.events); const accessCode=normalize_(e.parameter.accessCode||''); const device=ensureActiveDevice_(accessCode,e); if(!device.ok) return json_(device,e); const time=String(e.parameter.time||new Date().toISOString()); const item={time,timeCz:formatDateTimeCz_(time),teamId:String(e.parameter.teamId||''),team:String(e.parameter.team||''),accessCode,variant:variantFromParam_(e.parameter),type:String(e.parameter.type||''),eventName:String(e.parameter.eventName||''),station:Number(e.parameter.station||1),stationTitle:String(e.parameter.stationTitle||''),hint:String(e.parameter.hint||''),value:String(e.parameter.value||''),detail:String(e.parameter.detail||'{}')}; const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); return json_({ok:true},e); }
 function addLeaderboard_(e){ const id=String(e.parameter.id||''); if(!id) return json_({ok:false,error:'missing id'},e); const sh=getSheet_(SHEETS.leaderboard,HEADERS.leaderboard); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const date=String(e.parameter.date||new Date().toISOString()); if(findRowById_(sh,id)<0){ const item={id,team:String(e.parameter.team||'Bez nazvu'),total:Number(e.parameter.total||0),hints:Number(e.parameter.hints||0),solutions:Number(e.parameter.solutions||0),title:String(e.parameter.title||''),date,dateCz:formatDateTimeCz_(date),variant:variantFromParam_(e.parameter)}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); } return json_({ok:true},e); }
 function restoreTeamByCode_(e){ const code=normalize_(e.parameter.accessCode||''); if(!accessCodeRecord_(code)) return json_({team:null},e); const rows=rows_(SHEETS.teams).filter(r=>normalize_(r.accessCode)===code).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))); return json_({team:rows[0]||null},e); }
 function adminData_(){ const allTeams=rows_(SHEETS.teams).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))); const teams=adminVisibleTeams_(allTeams); const visibleIds={}; teams.forEach(t=>visibleIds[String(t.id||'')]=true); const events=rows_(SHEETS.events).filter(e=>!e.teamId || visibleIds[String(e.teamId||'')]).slice(-200); return {ok:true,teams,events,leaderboard:leaderboardRows_(),accessCodes:rows_(SHEETS.accessCodes),leads:rows_(SHEETS.leads).slice(-100)}; }
