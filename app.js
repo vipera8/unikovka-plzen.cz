@@ -1902,11 +1902,16 @@ function openFacebookReviewTarget(url){
 let selfieStream=null;
 let selfieLastBlob=null;
 let selfieMode='frame';
+let grollSelfieScale=1.12;
+let grollSelfieOffsetX=0;
+let grollSelfieOffsetY=0;
 const SELFIE_MODES={
  frame:{label:'Rámeček',frame:'assets/images/selfie_frame_team_wide.png',window:{x:245,y:205,w:958,h:760}},
  groll:{label:'S Grollem',frame:'assets/images/groll_selfie_overlay.png',window:{x:0,y:0,w:1448,h:1086}}
 };
 const SELFIE_CANVAS_SIZE={w:1448,h:1086};
+const GROLL_SELFIE_LOGO_SRC='assets/images/Groll_logo_na_sirku.jpg';
+const GROLL_SELFIE_BASE={widthPct:.34,rightPct:.025,bottomPct:-.012};
 function stopSelfieCamera(){
  if(selfieStream){
   selfieStream.getTracks().forEach(t=>t.stop());
@@ -1923,10 +1928,19 @@ function openSelfieBooth(){
   <div class="selfie-stage" id="selfieStage">
    <video id="selfieVideo" class="selfie-video" autoplay playsinline muted></video>
    <img id="selfieFrame" class="selfie-frame-image" src="${SELFIE_MODES.frame.frame}" alt="" aria-hidden="true">
+   <img id="selfieGrollLogo" class="selfie-groll-logo" src="${GROLL_SELFIE_LOGO_SRC}" alt="" aria-hidden="true">
    <canvas id="selfieCanvas" class="selfie-canvas" width="1448" height="1086"></canvas>
    <img id="selfieResult" class="selfie-result" alt="Památeční fotka z Grollovy zlaté stopy">
    <button id="selfieStartBtn" class="selfie-start-btn" type="button" onclick="startSelfieCamera()">Spustit fotoaparát</button>
    <button id="selfieCaptureBtn" class="selfie-capture-btn" type="button" onclick="captureGrollSelfie()">Vyfotit</button>
+  </div>
+  <div id="grollSelfieControls" class="groll-selfie-controls" hidden>
+   <button type="button" onclick="adjustGrollSelfie('scale',-0.06)">Menší</button>
+   <button type="button" onclick="adjustGrollSelfie('scale',0.06)">Větší</button>
+   <button type="button" onclick="adjustGrollSelfie('x',0.018)">Doleva</button>
+   <button type="button" onclick="adjustGrollSelfie('x',-0.018)">Doprava</button>
+   <button type="button" onclick="adjustGrollSelfie('y',0.018)">Výš</button>
+   <button type="button" onclick="adjustGrollSelfie('y',-0.018)">Níž</button>
   </div>
   <div class="grid two selfie-actions">
    <button class="btn secondary" onclick="retakeGrollSelfie()">Zkusit znovu</button>
@@ -1948,7 +1962,30 @@ function setSelfieMode(mode){
  if(frameEl) frameEl.src=SELFIE_MODES[selfieMode].frame;
  $('#selfieModeFrame')?.classList.toggle('active', selfieMode==='frame');
  $('#selfieModeGroll')?.classList.toggle('active', selfieMode==='groll');
+ const controls=$('#grollSelfieControls');
+ if(controls) controls.hidden=!isGroll;
+ updateGrollSelfiePreview();
  if(result && result.style.display==='block') retakeGrollSelfie();
+}
+function adjustGrollSelfie(type, delta){
+ if(type==='scale') grollSelfieScale=clamp(grollSelfieScale+delta,.78,1.48);
+ if(type==='x') grollSelfieOffsetX=clamp(grollSelfieOffsetX+delta,-.09,.12);
+ if(type==='y') grollSelfieOffsetY=clamp(grollSelfieOffsetY+delta,-.08,.12);
+ updateGrollSelfiePreview();
+}
+function updateGrollSelfiePreview(){
+ const frameEl=$('#selfieFrame');
+ if(!frameEl) return;
+ if(selfieMode!=='groll'){
+  frameEl.removeAttribute('style');
+  return;
+ }
+ const width=(GROLL_SELFIE_BASE.widthPct*grollSelfieScale*100).toFixed(2);
+ const right=((GROLL_SELFIE_BASE.rightPct+grollSelfieOffsetX)*100).toFixed(2);
+ const bottom=((GROLL_SELFIE_BASE.bottomPct+grollSelfieOffsetY)*100).toFixed(2);
+ frameEl.style.width=`${width}%`;
+ frameEl.style.right=`${right}%`;
+ frameEl.style.bottom=`${bottom}%`;
 }
 async function startSelfieCamera(){
  const status=$('#selfieStatus');
@@ -1999,8 +2036,10 @@ async function captureGrollSelfie(){
  ctx.fillRect(0,0,canvas.width,canvas.height);
  const cameraRect=scaledSelfieFrameWindow(canvas);
  if(selfieMode==='groll'){
+  const logo=await loadImage(GROLL_SELFIE_LOGO_SRC);
   drawAntiqueCameraWindow(ctx, video, cameraRect);
   drawGrollOverlay(ctx, canvas, frame);
+  drawGrollSelfieLogo(ctx, canvas, logo);
  } else {
   ctx.drawImage(frame,0,0,canvas.width,canvas.height);
   drawAntiqueCameraWindow(ctx, video, cameraRect);
@@ -2011,6 +2050,8 @@ async function captureGrollSelfie(){
   result.style.display='block';
   video.style.display='none';
   if(frameEl) frameEl.style.display='none';
+  const logoEl=$('#selfieGrollLogo');
+  if(logoEl) logoEl.style.display='none';
   if(captureBtn) captureBtn.style.display='none';
   $('#selfieStage')?.classList.add('captured');
  }
@@ -2065,11 +2106,13 @@ function drawAntiqueCameraWindow(ctx, source, rect){
  ctx.restore();
 }
 function drawGrollOverlay(ctx, canvas, groll){
- const targetW=canvas.width*.27;
+ const targetW=canvas.width*GROLL_SELFIE_BASE.widthPct*grollSelfieScale;
  const ratio=(groll.naturalHeight || groll.height)/(groll.naturalWidth || groll.width);
  const targetH=targetW*ratio;
- const x=canvas.width-targetW-canvas.width*.055;
- const y=canvas.height-targetH-canvas.height*.075;
+ const right=canvas.width*(GROLL_SELFIE_BASE.rightPct+grollSelfieOffsetX);
+ const bottom=canvas.height*(GROLL_SELFIE_BASE.bottomPct+grollSelfieOffsetY);
+ const x=canvas.width-targetW-right;
+ const y=canvas.height-targetH-bottom;
  const off=document.createElement('canvas');
  off.width=Math.max(1,Math.round(targetW));
  off.height=Math.max(1,Math.round(targetH));
@@ -2081,6 +2124,19 @@ function drawGrollOverlay(ctx, canvas, groll){
  ctx.shadowBlur=18;
  ctx.shadowOffsetY=8;
  ctx.drawImage(off,x,y,targetW,targetH);
+ ctx.restore();
+}
+function drawGrollSelfieLogo(ctx, canvas, logo){
+ const targetW=canvas.width*.34;
+ const ratio=(logo.naturalHeight || logo.height)/(logo.naturalWidth || logo.width);
+ const targetH=targetW*ratio;
+ const x=(canvas.width-targetW)/2;
+ const y=canvas.height*.025;
+ ctx.save();
+ ctx.shadowColor='rgba(20,10,3,.55)';
+ ctx.shadowBlur=18;
+ ctx.shadowOffsetY=7;
+ ctx.drawImage(logo,x,y,targetW,targetH);
  ctx.restore();
 }
 function applyAntiquePhoto(ctx, canvas){
@@ -2119,8 +2175,11 @@ function retakeGrollSelfie(){
  if(result){ result.removeAttribute('src'); result.style.display='none'; }
  if(video) video.style.display='block';
  if(frameEl) frameEl.style.display='block';
+ const logoEl=$('#selfieGrollLogo');
+ if(logoEl) logoEl.style.display='';
  if(captureBtn) captureBtn.style.display='inline-flex';
  $('#selfieStage')?.classList.remove('captured');
+ updateGrollSelfiePreview();
  if(status) status.textContent='Nastavte záběr a vyfoťte se znovu.';
 }
 function selfieFileName(){
