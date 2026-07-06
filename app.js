@@ -1902,7 +1902,7 @@ function openFacebookReviewTarget(url){
 let selfieStream=null;
 let selfieLastBlob=null;
 let selfieMode='frame';
-let grollSelfieScale=1.12;
+let grollSelfieScale=1.24;
 let grollSelfieOffsetX=0;
 let grollSelfieOffsetY=0;
 const SELFIE_MODES={
@@ -1910,8 +1910,8 @@ const SELFIE_MODES={
  groll:{label:'S Grollem',frame:'assets/images/groll_selfie_overlay.png',window:{x:0,y:0,w:1448,h:1086}}
 };
 const SELFIE_CANVAS_SIZE={w:1448,h:1086};
-const GROLL_SELFIE_LOGO_SRC='assets/images/Groll_logo_na_sirku.jpg';
-const GROLL_SELFIE_BASE={widthPct:.34,rightPct:.025,bottomPct:-.012};
+const GROLL_SELFIE_LOGO_SRC='assets/images/groll_selfie_logo_badge.png';
+const GROLL_SELFIE_BASE={widthPct:.34,rightPct:-.012,bottomPct:-.012};
 function stopSelfieCamera(){
  if(selfieStream){
   selfieStream.getTracks().forEach(t=>t.stop());
@@ -2127,7 +2127,7 @@ function drawGrollOverlay(ctx, canvas, groll){
  ctx.restore();
 }
 function drawGrollSelfieLogo(ctx, canvas, logo){
- const targetW=canvas.width*.34;
+ const targetW=canvas.width*.24;
  const ratio=(logo.naturalHeight || logo.height)/(logo.naturalWidth || logo.width);
  const targetH=targetW*ratio;
  const x=(canvas.width-targetW)/2;

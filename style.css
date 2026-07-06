@@ -1567,7 +1567,7 @@
   z-index:5;
   left:50%;
   top:2.5%;
-  width:34%;
+  width:24%;
   height:auto;
   transform:translateX(-50%);
   pointer-events:none;
@@ -1580,9 +1580,9 @@
   inset:auto;
   left:auto;
   top:auto;
-  right:2.5%;
+  right:-1.2%;
   bottom:-1.2%;
-  width:38%;
+  width:42.16%;
   height:auto;
   object-fit:contain;
   filter:sepia(.24) saturate(.78) contrast(1.04) brightness(.98) drop-shadow(0 10px 18px rgba(18,8,2,.45));
