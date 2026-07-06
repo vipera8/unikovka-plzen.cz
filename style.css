@@ -1483,6 +1483,26 @@
   justify-content:center;
   text-decoration:none;
 }
+.selfie-mode-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.selfie-mode-btn{
+  border:1px solid rgba(74,42,14,.28);
+  border-radius:999px;
+  padding:10px 12px;
+  background:rgba(255,248,224,.72);
+  color:#4a2a0e;
+  font-weight:900;
+  cursor:pointer;
+}
+.selfie-mode-btn.active{
+  background:#6f3d12;
+  color:#fff5d6;
+  box-shadow:0 8px 18px rgba(45,24,8,.18);
+}
 .selfie-stage{
   position:relative;
   overflow:hidden;
@@ -1505,16 +1525,25 @@
   object-fit:cover;
 }
 .selfie-video{
-  z-index:1;
+  z-index:5;
   inset:auto;
-  left:20.37%;
-  top:26.70%;
-  width:58.43%;
-  height:63.08%;
+  left:16.92%;
+  top:18.88%;
+  width:66.16%;
+  height:69.98%;
   max-height:none;
-  border-radius:26px;
+  border-radius:6px;
   transform:scaleX(-1);
   filter:sepia(.24) saturate(.78) contrast(1.04) brightness(.98);
+}
+.selfie-mode-groll .selfie-video{
+  z-index:1;
+  inset:0;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  border-radius:0;
 }
 .selfie-canvas{
   display:none;
@@ -1531,6 +1560,17 @@
   height:100%;
   object-fit:cover;
   pointer-events:none;
+}
+.selfie-mode-groll .selfie-frame-image{
+  inset:auto;
+  left:auto;
+  top:auto;
+  right:5.5%;
+  bottom:7.5%;
+  width:27%;
+  height:auto;
+  object-fit:contain;
+  filter:sepia(.24) saturate(.78) contrast(1.04) brightness(.98) drop-shadow(0 10px 18px rgba(18,8,2,.45));
 }
 .selfie-stage:not(.camera-ready) .selfie-frame-image{
   opacity:0;

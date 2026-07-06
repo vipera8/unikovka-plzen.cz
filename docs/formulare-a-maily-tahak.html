@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Únikovka Plzeň - tahák k formulářům a e-mailům</title>
+  <style>
+    @page { size: A4; margin: 13mm 13mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #24150a;
+      background: #fffaf0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 12.2px;
+      line-height: 1.38;
+    }
+    h1, h2, h3 {
+      font-family: Georgia, "Times New Roman", serif;
+      color: #4a2508;
+      margin: 0 0 7px;
+      line-height: 1.12;
+    }
+    h1 { font-size: 27px; }
+    h2 { font-size: 20px; margin-top: 16px; border-bottom: 1.5px solid #c89a49; padding-bottom: 4px; }
+    h3 { font-size: 15px; margin-top: 12px; }
+    p { margin: 5px 0; }
+    ul, ol { margin: 5px 0 8px 19px; padding: 0; }
+    li { margin: 2px 0; }
+    .cover {
+      padding: 15px 17px;
+      border: 2px solid #8a5a1f;
+      background: linear-gradient(135deg, #fff4d2, #f3dca7);
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .sub { color: #75522b; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .box {
+      border: 1px solid #d5b777;
+      background: #fff7df;
+      border-radius: 8px;
+      padding: 9px 10px;
+      break-inside: avoid;
+    }
+    .warn { border-left: 5px solid #8f2b16; }
+    .ok { border-left: 5px solid #4f7b2c; }
+    .note { border-left: 5px solid #c9942d; }
+    .small { font-size: 11px; color: #5b4125; }
+    .tag {
+      display: inline-block;
+      padding: 1px 6px 2px;
+      border-radius: 99px;
+      background: #ead098;
+      color: #3b210b;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 7px 0 10px;
+      background: #fffdf6;
+      break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #dec58e;
+      padding: 5px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f0d79c; color: #341b08; }
+    code {
+      background: #f4e3ba;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.3px;
+    }
+    pre {
+      white-space: pre-wrap;
+      margin: 7px 0 11px;
+      padding: 8px 9px;
+      border: 1px solid #d6b979;
+      background: #fffdf8;
+      border-radius: 8px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 11.2px;
+      line-height: 1.32;
+      break-inside: avoid;
+    }
+    .page-break { break-before: page; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>Únikovka Plzeň - tahák k formulářům a e-mailům</h1>
+    <p class="sub">Grollova zlatá stopa | provozní postup pro Google Sheets a e-mail</p>
+    <p><b>Kde se pracuje:</b> Google tabulka <b>Grollova zlatá stopa - žebříček a admin</b>, hlavně záložky <code>Leads</code>, <code>Vouchers</code> a <code>AccessCodes</code>.</p>
+    <p><b>Veřejný kontakt:</b> info@unikovka-plzen.cz | <b>účet pro platby:</b> 1025666081/5500</p>
+  </section>
+
+  <div class="grid">
+    <div class="box ok">
+      <h3>Co se děje vždy po odeslání formuláře</h3>
+      <ul>
+        <li>Vznikne nový řádek v záložce <code>Leads</code>.</li>
+        <li>Na <b>info@unikovka-plzen.cz</b> přijde upozornění.</li>
+        <li>Zákazník dostane automatické potvrzení přijetí formuláře.</li>
+      </ul>
+    </div>
+    <div class="box note">
+      <h3>Nejdůležitější sloupce v Leads</h3>
+      <ul>
+        <li><code>type</code> - druh formuláře: rezervace, poukaz, firma, kontakt.</li>
+        <li><code>status</code> - ruční řízení dalšího kroku.</li>
+        <li><code>amountKc</code> - částka do platebního e-mailu.</li>
+        <li><code>confirmedEmailSentAt</code> - byl odeslán e-mail s platebními údaji.</li>
+        <li><code>paidEmailSentAt</code> - byl odeslán e-mail po přijetí platby.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Stavy v záložce Leads</h2>
+  <table>
+    <tr><th>Stav</th><th>Kdy použít</th><th>Automatický e-mail</th></tr>
+    <tr><td><span class="tag">nové</span></td><td>Nová rezervace, kontakt nebo firemní poptávka.</td><td>Ne, pouze prvotní potvrzení už odešlo při odeslání formuláře.</td></tr>
+    <tr><td><span class="tag">čeká na platbu</span></td><td>U poukazu se nastaví automaticky po objednání. U rezervace ho můžeš použít jen orientačně po odeslání platebních údajů.</td><td>Ne.</td></tr>
+    <tr><td><span class="tag">potvrzeno</span></td><td>Termín rezervace je volný a chceš poslat platební údaje.</td><td>Ano. Odešle se e-mail s platebními údaji, pokud je prázdný sloupec <code>confirmedEmailSentAt</code>.</td></tr>
+    <tr><td><span class="tag">zaplaceno</span></td><td>Platba dorazila na účet.</td><td>Ano. U rezervace se vytvoří přístupový kód. U poukazu se vytvoří číslo voucheru.</td></tr>
+    <tr><td><span class="tag">odesláno</span></td><td>Voucher už byl zákazníkovi ručně poslaný e-mailem.</td><td>Ne.</td></tr>
+    <tr><td><span class="tag">čeká na odpověď</span></td><td>Čekáš na reakci zákazníka nebo domluvu termínu.</td><td>Ne.</td></tr>
+    <tr><td><span class="tag">zrušeno</span></td><td>Rezervace nebo poptávka je zrušená.</td><td>Ne.</td></tr>
+    <tr><td><span class="tag">vyřízeno</span></td><td>Věc je uzavřená a není potřeba další akce.</td><td>Ne.</td></tr>
+  </table>
+
+  <section class="page-break">
+    <h2>1. Rezervace hry</h2>
+    <div class="box">
+      <h3>Co vyplní zákazník na webu</h3>
+      <p>Jméno, e-mail, telefon, varianta hry, požadovaný termín, čas, počet dospělých, počet dětí a poznámka.</p>
+      <p><b>Automaticky zákazníkovi přijde:</b> potvrzení, že rezervace byla přijata a termín bude ověřen.</p>
+    </div>
+    <h3>Tvůj postup v Google Sheets</h3>
+    <ol>
+      <li>Otevři záložku <code>Leads</code> a najdi nový řádek s typem <code>rezervace</code>.</li>
+      <li>Zkontroluj požadovaný termín a čas.</li>
+      <li>Do <code>amountKc</code> vyber správnou cenu: krátká 1200/1600 Kč, delší 1500/1900 Kč.</li>
+      <li>Pokud termín sedí, změň <code>status</code> na <code>potvrzeno</code>. Odejde automatický e-mail s platebními údaji.</li>
+      <li>Po přijetí platby změň <code>status</code> na <code>zaplaceno</code>. Systém vytvoří přístupový kód a pošle organizační e-mail.</li>
+      <li>Přístupový kód zákazníkovi předem neposílej. Dostane ho až při převzetí batohu na startu.</li>
+    </ol>
+    <div class="box warn">
+      <h3>Když termín nejde</h3>
+      <p>Nezměň stav na <code>potvrzeno</code>. Odpověz ručně podle šablony níže a navrhni náhradní termíny.</p>
+    </div>
+    <h3>Ruční šablona: termín není volný</h3>
+    <pre>Předmět: Grollova zlatá stopa - domluva náhradního termínu
+
+Dobrý den, [jméno],
+
+děkujeme za rezervaci hry Grollova zlatá stopa.
+
+Vámi vybraný termín [datum a čas] bohužel nemůžeme potvrdit. Rádi vám ale nabídneme jiný čas.
+
+Volné možnosti jsou:
+- [náhradní termín 1]
+- [náhradní termín 2]
+- [náhradní termín 3]
+
+Jakmile si vyberete, termín vám potvrdíme a pošleme platební údaje.
+
+Děkujeme a těšíme se na vás.
+
+Únikovka Plzeň
+Grollova zlatá stopa
+info@unikovka-plzen.cz
+737 256 827</pre>
+  </section>
+
+  <section class="page-break">
+    <h2>2. Dárkový poukaz</h2>
+    <div class="box">
+      <h3>Co vyplní zákazník na webu</h3>
+      <p>Jméno objednatele, e-mail, telefon, varianta hry, počet hráčů a poznámka.</p>
+      <p><b>Automaticky zákazníkovi přijde:</b> e-mail s platebními údaji. Stav v <code>Leads</code> bude <code>čeká na platbu</code>.</p>
+    </div>
+    <h3>Tvůj postup v Google Sheets a administraci</h3>
+    <ol>
+      <li>V <code>Leads</code> zkontroluj typ <code>poukaz</code>, částku <code>amountKc</code> a údaje objednatele.</li>
+      <li>Po přijetí platby změň <code>status</code> na <code>zaplaceno</code>.</li>
+      <li>Systém doplní <code>voucherCode</code>, <code>voucherValidUntil</code> a <code>accessCode</code> a přidá řádek do <code>Vouchers</code>.</li>
+      <li>Zákazníkovi odejde automatický e-mail, že platba byla přijata a poukaz připravíš.</li>
+      <li>V admin části hry vytvoř/stáhni voucher s číslem voucheru, variantou a platností.</li>
+      <li>Poukaz pošli ručně jako přílohu z info@unikovka-plzen.cz.</li>
+      <li>Po odeslání poukazu změň <code>status</code> na <code>odesláno</code>.</li>
+    </ol>
+    <div class="box note">
+      <h3>Důležité</h3>
+      <p>Číslo voucheru není přístupový kód do hry. Přístupový kód se uloží do tabulky pro tebe, ale na samotný poukaz ho nepiš.</p>
+    </div>
+    <h3>Ruční šablona: odeslání hotového voucheru</h3>
+    <pre>Předmět: Dárkový poukaz Grollova zlatá stopa
+
+Dobrý den, [jméno],
+
+děkujeme za platbu. V příloze posíláme elektronický dárkový poukaz na venkovní únikovou hru Grollova zlatá stopa.
+
+Číslo voucheru: [číslo voucheru]
+Varianta: [krátká / delší]
+Platnost do: [datum]
+
+Obdarovaný si termín hry vybere později přes web www.unikovka-plzen.cz nebo e-mailem na info@unikovka-plzen.cz.
+
+Budeme se těšit na hru.
+
+Únikovka Plzeň
+Grollova zlatá stopa
+info@unikovka-plzen.cz
+737 256 827</pre>
+  </section>
+
+  <section class="page-break">
+    <h2>3. Firemní poptávka</h2>
+    <div class="box">
+      <h3>Co vyplní zákazník na webu</h3>
+      <p>Název firmy, kontaktní osoba, e-mail, telefon, počet osob, preferovaný termín a poznámka.</p>
+      <p><b>Automaticky zákazníkovi přijde:</b> potvrzení, že poptávka byla přijata a ozveš se s dalším postupem.</p>
+    </div>
+    <h3>Tvůj postup</h3>
+    <ol>
+      <li>V <code>Leads</code> najdi řádek s typem <code>firma</code>.</li>
+      <li>Promysli kapacitu batohů, počet týmů a možný časový rozestup startů.</li>
+      <li>Odpověz ručně podle šablony a domluv detaily.</li>
+      <li>Pro rozpracované poptávky můžeš nastavit <code>čeká na odpověď</code>, hotové označ <code>vyřízeno</code>.</li>
+    </ol>
+    <h3>Ruční šablona: první odpověď firmě</h3>
+    <pre>Předmět: Grollova zlatá stopa - firemní hra v Plzni
+
+Dobrý den, [jméno],
+
+děkujeme za firemní poptávku ke hře Grollova zlatá stopa.
+
+Podle zaslaných informací evidujeme:
+- firma: [název firmy]
+- počet osob: [počet]
+- preferovaný termín: [termín]
+
+Hra probíhá venku v historickém centru Plzně a týmy pracují s herním batohem, rekvizitami a webovou aplikací. Podle počtu osob můžeme skupinu rozdělit do více týmů.
+
+Prosím napište mi, zda preferujete kratší variantu na přibližně 2-3 hodiny, nebo delší variantu na přibližně 4-5 hodin. Poté navrhnu konkrétní organizaci a cenu.
+
+Děkuji a budu se těšit na odpověď.
+
+Únikovka Plzeň
+Grollova zlatá stopa
+info@unikovka-plzen.cz
+737 256 827</pre>
+
+    <h2>4. Kontakt / obecná zpráva</h2>
+    <div class="box">
+      <p><b>Automaticky zákazníkovi přijde:</b> potvrzení, že zpráva byla přijata.</p>
+      <p><b>Tvůj postup:</b> ručně odpověz, po vyřízení nastav v <code>Leads</code> stav <code>vyřízeno</code>.</p>
+    </div>
+    <h3>Ruční šablona: obecná odpověď</h3>
+    <pre>Předmět: Únikovka Plzeň - odpověď na zprávu
+
+Dobrý den, [jméno],
+
+děkujeme za zprávu.
+
+[vlastní odpověď]
+
+Kdyby vás zajímalo ještě něco dalšího, napište nám.
+
+Únikovka Plzeň
+Grollova zlatá stopa
+info@unikovka-plzen.cz
+737 256 827</pre>
+  </section>
+
+  <section class="page-break">
+    <h2>Automatické e-maily po platbě a po hře</h2>
+    <table>
+      <tr><th>Situace</th><th>Co odejde automaticky</th><th>Co děláš ty</th></tr>
+      <tr>
+        <td>Rezervace: status <code>potvrzeno</code></td>
+        <td>Platební údaje, částka ze sloupce <code>amountKc</code>, účet 1025666081/5500.</td>
+        <td>Před změnou statusu zkontroluj termín a částku.</td>
+      </tr>
+      <tr>
+        <td>Rezervace: status <code>zaplaceno</code></td>
+        <td>Potvrzení platby a organizační informace. Systém vytvoří přístupový kód, ale zákazník ho e-mailem nedostane.</td>
+        <td>Připrav batoh a přístupový kód předej až na startu.</td>
+      </tr>
+      <tr>
+        <td>Poukaz: objednávka z webu</td>
+        <td>Platební údaje odejdou hned po odeslání formuláře.</td>
+        <td>Čekáš na platbu, případně zkontroluješ částku.</td>
+      </tr>
+      <tr>
+        <td>Poukaz: status <code>zaplaceno</code></td>
+        <td>Informace, že platba byla přijata a poukaz bude připraven. Systém vytvoří číslo voucheru i přístupový kód.</td>
+        <td>Stáhni voucher v adminu, pošli ho ručně jako přílohu a pak nastav stav <code>odesláno</code>.</td>
+      </tr>
+      <tr>
+        <td>Dokončení hry</td>
+        <td>Pokud má přístupový kód e-mail, odejde poděkování a prosba o recenzi.</td>
+        <td>Nic. Jen můžeš později sledovat recenze na Google/Facebooku.</td>
+      </tr>
+    </table>
+
+    <h2>Ceny</h2>
+    <table>
+      <tr><th>Varianta</th><th>2 hráči</th><th>3 a více hráčů</th></tr>
+      <tr><td>Krátká varianta, 7 zastávek</td><td>1 200 Kč</td><td>1 600 Kč</td></tr>
+      <tr><td>Delší varianta, 13 zastávek</td><td>1 500 Kč</td><td>1 900 Kč</td></tr>
+    </table>
+
+    <h2>Rychlá kontrola před změnou statusu</h2>
+    <div class="grid">
+      <div class="box warn">
+        <h3>Před <code>potvrzeno</code></h3>
+        <ul>
+          <li>Je termín opravdu volný?</li>
+          <li>Je vybraná správná varianta?</li>
+          <li>Je vyplněný <code>amountKc</code>?</li>
+          <li>Je e-mail zákazníka správně?</li>
+        </ul>
+      </div>
+      <div class="box warn">
+        <h3>Před <code>zaplaceno</code></h3>
+        <ul>
+          <li>Platba je skutečně na účtu?</li>
+          <li>Sedí jméno nebo poznámka pro příjemce?</li>
+          <li>U poukazu víš, jakou variantu vystavit?</li>
+          <li>U rezervace je jasné, kdy předat batoh?</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="small">Poznámka: sloupce <code>confirmedEmailSentAt</code> a <code>paidEmailSentAt</code> slouží jako pojistka proti opakovanému odeslání automatického e-mailu. Jakmile se vyplní, systém stejný e-mail znovu neposílá.</p>
+  </section>
+</body>
+</html>
