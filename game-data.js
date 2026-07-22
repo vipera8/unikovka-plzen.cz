@@ -98,6 +98,17 @@
                          "more":  "Tak vy chcete slyšet nějaké pikošky? Dobrá. Tohle divadlo bylo otevřeno v roce 1902 a na tu dobu to byl naprostý technologický zázrak. Mělo vlastní elektrickou elektrárnu a osvětlení, což v té době nebylo vůbec běžné. Zatímco zbytek světa ještě opatrně škrtal sirkami a bál se, že mu u plynových lamp vyletí barák do povětří, v Plzni už se na umění hrdě svítilo žárovkami!\n\nAle víte, co je na tom nejlepší? Tohle divadlo je v podstatě zhmotněné pivo. Aby se na něj vybralo dost peněz, zavedl se takzvaný ‚pivní krejcar‘. Z každého hektolitru piva, který se v Plzni uvařil, šla část peněz přímo na stavbu tohohle paláce. Takže tyhle nádherné zdi zaplatily tisíce vypitých půllitrů a stovky pořádných kocovin našich předků! Kultura a pivo k sobě v Plzni zkrátka patří od první cihly.",
                          "image":  "05_Groll_tylovo_divadlo.jpg",
                          "introAudio":  "05_Velke_divadlo_J.K.Tyla_audio_Groll_uvod_1+znelka_cista+2.mp3",
+                         "introAudioSequence":  [
+                                                    {
+                                                        "src":  "05_Velke_divadlo_J.K.Tyla_audio_Groll_uvod_1+znelka_cista+2.mp3",
+                                                        "end":  45,
+                                                        "label":  "Přehrávám úvod a znělku..."
+                                                    },
+                                                    {
+                                                        "src":  "05_Velke_divadlo_J.K.Tyla_audio_Groll_uvod_2_oprava_textu.mp3",
+                                                        "label":  "Přehrávám navazující zadání..."
+                                                    }
+                                                ],
                          "hintCount":  3
                      },
                      {
@@ -133,7 +144,7 @@
                          "intro":  "Tak jsme v samém srdci Plzně. Rozhlédněte se kolem - ta věž nad vámi, to je katedrála svatého Bartoloměje. Se svými 102 metry je to nejvyšší kostelní věž v celém Česku! Skoro se z té výšky točí hlava, co?\n\nMy ale musíme zůstat nohama na zemi. Najděte na obvodu katedrály mříž s mnoha andělíčky a postavte se přímo k ní.\n\nJednou jsem tam poseděl a zapíjel dlouhý den svým zlatým mokem. Než korbel ztěžkl a mysl se rozplula, zakreslil jsem si do deníku mříž onoho malého anděla. Jenže ruka vedená pivem nebývá nejspolehlivější... Nalistujte v deníku stránku s mříží a hledejte, kde se má paměť rozchází s pravdou.\n\nV deníku u mříže se nacházejí znamení, ne všechna vám ale ukážou cestu dál. Ta správná poznáte podle toho, že se u nich kresba mříže rozchází se skutečností. Až je odhalíte, vydejte se po jejich stopách kolem náměstí. Staré domy tu stále hrdě nesou svá jména. Z čísla každého nalezeného domu si ponechte pouze číslici, která kráčí jako první.\n\nPořádně se dívejte, ať u toho andělíčka nevystojíte důlek!",
                          "more":  "Tahle katedrála je skutečný unikát. Stavěla se přes dvě stě let a ta věž, o které jsem mluvil, měří přesně 102,26 metru. Kdo chce vidět až na Šumavu, musí vyšlapat 301 schodů!\n\nA co ten andělíček pro štěstí na mříži? Traduje se, že když se ho dotknete a něco si přejete, do roka se vám to splní. Původně tam prý klečel odsouzenec na smrt a andělíček mu přinesl útěchu, dneska je z něj nejslavnější celebrita v Plzni – vidíte, jak je od těch tisíců dlaní vyleštěný?\n\nA nepřehlédněte ty tři zlaté kašny v rozích náměstí. Představují symboly z našeho městského znaku: Chrtici, Anděla a Velblouda. Toho velblouda Plzeňáci získali jako válečnou kořist od husitů, když je tu v 15. století obléhali. Prostě jsme jim ho sebrali a od té doby ho máme v erbu. Takoví my v Plzni jsme – co je dobré, to si podržíme!",
                          "image":  "07_Groll_namesti.jpg",
-                         "introAudio":  "07_Namesti_Republiky_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "07_Namesti_Republiky_audio_Groll_uvod_1_oprava_textu.mp3",
                          "hintCount":  3
                      },
                      {
@@ -151,7 +162,7 @@
                          "intro":  "Vítejte ve Veleslavínově ulici. Stojíte před domem, který už ve středověku držel vzácné právo várečné – výsadu vařit pivo přímo ve svých zdech. Ale to největší tajemství se skrývá hlouběji. Přímo pod vašima nohama se táhne 20 kilometrů chodeb historického podzemí. Sloužilo jako obří středověká lednice; bez ní by plzeňské pivo nikdy nebylo legendou, protože by v teple prostě zkvasilo. Ale dost tlachání, teď se ukažte vy!\n\nHledejte znamení nacházející se v oblouku nad vchodem do muzea. Prozradí vám, kde v mých zápiscích o elixírech vaše pátrání začíná. Tak se pořádně podívejte nad sebe a ukažte mi, že máte oči sládka, kterému nic neuteče!",
                          "more":  "To podzemí, co máte pod botami, je jedno z největších ve střední Europě. Chodby jsou tam místy ve dvou až třech patrech nad sebou! A víte, jak se tam dělala ta lednice? Přes zimu se z plzeňských řek a rybníků vysekávaly obří kusy ledu, které se navozily do hlubokých sklepů. Tam ten led vydržel klidně až do příštího podzimu a chladil sudy s pivem.\n\nA co to ‚právo várečné‘? To nebylo jen tak pro někoho. V Plzni ho mělo přesně 257 měšťanů. Znamenalo to, že směli ve svém domě vařit a prodávat pivo. Byl to obrovský majetek – takový dům měl cenu zlata.",
                          "image":  "08_Groll_pivovarske_muzeum.jpg",
-                         "introAudio":  "08_Pivovarsko_muzeum_a_Plzenske_podzemi_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "08_Pivovarsko_muzeum_a_Plzenske_podzemi_audio_Groll_uvod_1_oprava_textu.mp3",
                          "hintCount":  3
                      },
                      {
@@ -169,7 +180,7 @@
                          "intro":  "Stojíte u Vodárenské věže. Tady se narodil můj drahý přítel Josef Škoda. Zatímco já zkoumal tajemství piva, on naslouchal tlukotu lidského srdce. Čas byl pro něj vším.\n\nPodívejte se na čas na hodinkách, které máte u sebe, a pozorně si prohlédněte dům jeho dětství.",
                          "more":  "Tady to páchne... tedy voní historií! Ta Vodárenská věž tu stojí od 16. století. Dřív pumpovala vodu do kašen na náměstí, aby měli lidé co pít, když zrovna došlo pivo – což se doufám stávalo jen zřídka. Všimněte si té renesanční brány, ta tu zbyla z původního opevnění.\n\nA co ten můj přítel Josef Škoda? Narodil se přímo tady, v rodině chudého řemeslníka. Vypracoval se až na osobního lékaře císařovny Sisi! Byl to on, kdo naučil doktory používat uši a poklepávat na hrudník, aby zjistili, co se v člověku děje. Možná proto jsme si tak rozuměli – on diagnostikoval srdce poklepem, já pivní sudy taky!\n\nHned vedle máte Masné krámy. Dneska je tam galerie, ale nenechte se zmást těmi obrazy. Dřív to byl ‚žaludek Plzně‘. Řezníci tam měli své pulty a díky chytrému systému větrání – v podstatě takovému středověkému průvanu – tam maso zůstávalo čerstvé i v největším parnu. Ta budova vypadá trochu jako malá pevnost s cimbuřím, že? No, maso se v Plzni vždycky bralo vážně!",
                          "image":  "09_Groll_vodarenska_vez.jpg",
-                         "introAudio":  "09_Vodarenska_vez_a_masne_kramy_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "09_Vodarenska_vez_a_masne_kramy_audio_Groll_uvod_1_oprava_textu.mp3",
                          "hintCount":  3
                      },
                      {
@@ -244,6 +255,8 @@
                          "more":  "Možná si říkáte, co je na tomhle pivovaru tak zázračného. Kromě receptury, kterou jsem sem přivezl, je to hlavně to, co nevidíte. Přímo pod pivovarem se táhne neuvěřitelných devět kilometrů chodeb vytesaných do pískovce. Je tam stabilní teplota kolem sedmi stupňů, což je pro dozrávání ležáku naprostý ráj.\n\nDřív se tam v zimě navozily stovky tun ledu z plzeňských rybníků, aby se ty obří sudy udržely v chladu až do podzimu. Byl to neuvěřitelný kus práce, který dělaly generace ledařů a bednářů. Takže až teď budete otevírat tu svou krabičku, myslete na to, že poctivé věci vyžadují čas, chladnou hlavu a trpělivost. Tak do toho, ať slyším to cvaknutí zámku!",
                          "image":  "13_Groll_pivovar.jpg",
                          "introAudio":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1.mp3",
+                         "introAudioLong":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1_oprava_textu_dlouha_varianta.mp3",
+                         "introAudioShort":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1.mp3",
                          "hintCount":  4
                      }
                  ],

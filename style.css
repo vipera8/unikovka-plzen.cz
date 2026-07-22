@@ -44,6 +44,8 @@
 
 .intro-accordion{margin-top:10px}
 .intro-player{display:block;width:100%;margin:0 0 12px}
+.intro-sequence-player{display:grid;gap:8px;margin:0 0 12px}
+.intro-sequence-player .btn{width:100%}
 .intro-transcript{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);line-height:1.55}
 
 /* Obrázky v nápovědách */

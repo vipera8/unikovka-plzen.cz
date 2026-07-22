@@ -110,13 +110,13 @@ function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
 function stationIntroForVariant(st, variant=variantForState()){
  if(variant==='short' && Number(st?.id)===13){
-  return String(st.intro || '').replace('všech 12 kartiček', 'všech 6 kartiček').replace('všech 12 nasbíraných kartiček', 'všech 6 nasbíraných kartiček');
+  return 'Servus! Tak jste to dokázali. Stojíte před Jubilejní bránou – vítězným obloukem, který tu Plzeňáci postavili v roce 1892 k padesátému výročí mého prvního ležáku. Podívejte se na ni, je to brána do úplně jiného světa. Za těmi zdmi se pivo už skoro dvě stě let vaří, kvasí a zraje.\n\nTady končí vaše putování městem, už žádné další chození, žádné další zastávky, ale ta nejdůležitější práce vás teprve čeká. Teď už nepůjde o hledání. Teď musíte správně použít všechno, co jste po cestě získali.\n\nNejprve otevřete to, co zůstalo zavřené. Teprve potom pochopíte zbytek.';
  }
  return st?.intro || '';
 }
 function variantHintOverride(id, num, variant=variantForState()){
  if(variant!=='short' || Number(id)!==13) return null;
- if(Number(num)===1) return 'Vezmi všech 6 nasbíraných kartiček se směry. Kód k zámku získáš tak, že spočítáš, kolikrát se každý směr opakuje. Čísla zapiš v pořadí, v jakém se dané směry poprvé objevily během hry.';
+ if(Number(num)===1) return 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Směry zadejte do směrového zámku v pořadí, v jakém jste zastávky navštívili.';
  if(Number(num)===2) return 'Nyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!';
  if(Number(num)===3) return 'Na víčkách lahviček jsou římské číslice. Správné pořadí hledejte na bráně nad sebou - v římských číslicích. Lahvičky seřaďte podle prvního výskytu římských číslic v nápisu: MDCCCXLII. Tím získáte správné pořadí písmen a výsledné slovo pro cryptex.';
  return null;
@@ -610,7 +610,7 @@ Přejeme vám šťastnou cestu po Grollových stopách.`;}
 function startGame(){ const team=$('#teamName').value.trim(); if(!team) return toast('Zadejte název týmu.'); if(!$('#agree').checked) return toast('Nejprve potvrďte pravidla a odpovědnost.'); grantGameAccess(); const variant=variantForState(); const s=defaultState(team, variant); s.accessCode=sessionStorage.getItem(ACCESS_CODE_KEY)||''; s.variant=variant; s.gpsConsent = window._gpsOk || false; if(window._lastPos) s.lastPos=window._lastPos; saveState(s); addLog('start'); if(currentRoute()!=='/hra/app') setRoute('/hra/app', true); renderGameApp(); }
 function continueWithoutLocation(){ window._gpsOk=false; alert('Hru můžete hrát i bez sdílení polohy. Navigace z aplikace a odeslání vaší polohy přes SOS ale nebudou fungovat.'); }
 function requestPosBeforeStart(){ if(!navigator.geolocation) return toast('Poloha není v tomto prohlížeči dostupná.'); navigator.geolocation.getCurrentPosition(pos=>{ window._gpsOk=true; window._lastPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy}; toast('Poloha povolena.'); },()=>toast('Poloha nebyla povolena nebo se ji nepodařilo načíst.'),{enableHighAccuracy:true,timeout:8000}); }
-function renderStation(){ const s=getState(); const variant=variantForState(s); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${stationLabel(st.id, variant)} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:stationCountForVariant(variant),size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); if(!firstIntroOnly) prefetchStationHints(st.id); }
+function renderStation(){ stopIntroSequence(); const s=getState(); const variant=variantForState(s); const st=station(s.currentStation); const doneCount=s.completed.length; const needsGps = !s.gpsBypass.includes(st.id) && !s[`gpsOk${st.id}`]; if(st.id>1 && DATA.gpsMode!=='off' && needsGps) return renderArrivalCheck(st); const hintState=s.hints[st.id]||0; const firstIntroOnly = st.id===1 && !s.diaryUnlocked; app.innerHTML=shell(`<div class="station-head compact"><div class="station-title-line"><span class="station-title-text">${stationLabel(st.id, variant)} – ${escapeHtml(st.title)}</span>${BeerProgress({completedStops:doneCount,totalStops:stationCountForVariant(variant),size:'small',animated:false})}</div><button class="icon-btn danger" onclick="openSOS()">SOS</button></div>${renderStationSpecial(st,s,hintState)}${firstIntroOnly?'':`<div class="footer-actions"><button class="btn" onclick="openCode()">Zadat kód</button></div>`}`); startTimer(); if(!firstIntroOnly) prefetchStationHints(st.id); }
 function renderStationSpecial(st,s,hintState){
  if(st.id===1 && !s.diaryUnlocked){
   const intro = stationIntroForVariant(st, variantForState(s)).split('Tlačítko:')[0];
@@ -624,7 +624,19 @@ function diaryKeyHint(){
  return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Nemůžete najít klíč? <span>⌄</span></button><div class="acc-body">${ptxt('Klíč je schovaný uvnitř batohu. Prohledejte pečlivě místo, kde byl uložený deník. Některé části batohu drží na suchý zip a mohou skrývat víc, než se na první pohled zdá.')}</div></div>`;
 }
 function currentStationImage(st, firstScreen=false){ return firstScreen ? (st.image || '') : (st.image2 || st.image || ''); }
-function currentIntroAudio(st, firstScreen=false){ return firstScreen ? (st.introAudio || '') : (st.introAudio2 || st.introAudio || ''); }
+let introSequenceAudio=null;
+let introSequenceToken=0;
+function currentIntroAudio(st, firstScreen=false, variant=variantForState()){
+ if(firstScreen) return st.introAudio || '';
+ if(variant==='short' && st.introAudioShort) return st.introAudioShort;
+ if(variant!=='short' && st.introAudioLong) return st.introAudioLong;
+ return st.introAudio2 || st.introAudio || '';
+}
+function currentIntroAudioSequence(st, firstScreen=false, variant=variantForState()){
+ if(firstScreen) return null;
+ const seq=st?.introAudioSequence;
+ return Array.isArray(seq) && seq.length ? seq : null;
+}
 function stationImage(st, firstScreen=false){
  const img=currentStationImage(st, firstScreen);
  if(!img) return '';
@@ -632,14 +644,65 @@ function stationImage(st, firstScreen=false){
  const wrapExtra = st.id===8 ? ' station-08-wrap' : '';
  return `<figure class="station-image-wrap${wrapExtra}"><img class="station-image${extra}" src="assets/images/${encodeURI(img)}" alt="${escapeHtml(st.title)}" loading="eager" onerror="this.closest('.station-image-wrap').style.display='none'"></figure>`;
 }
-function introPanel(st, firstScreen=false, intro='', opened=false){
- const audio=currentIntroAudio(st, firstScreen);
- const audioPart = audio
+function introPanel(st, firstScreen=false, intro='', opened=false, variant=variantForState()){
+ const sequence=currentIntroAudioSequence(st, firstScreen, variant);
+ const audio=currentIntroAudio(st, firstScreen, variant);
+ const audioPart = sequence
+  ? `<div class="intro-sequence-player"><button id="introSequenceBtn-${st.id}" class="btn secondary" type="button" onclick="toggleIntroSequence(${st.id})">Přehrát úvod a zadání</button><p id="introSequenceStatus-${st.id}" class="small muted">Audio obsahuje úvod, znělku a navazující zadání.</p></div>`
+  : audio
   ? `<audio class="intro-player" controls preload="metadata" src="assets/audio/${encodeURI(audio)}"></audio>`
   : `<p class="small muted">Úvodní audio pro tuto zastávku zatím chybí.</p>`;
  const extraTitle = st.introImageTitle ? `<div class="intro-image-title">${escapeHtml(st.introImageTitle)}</div>` : '';
  const extraImage = st.introImage ? `<figure class="intro-image-wrap"><img class="intro-inline-image" src="assets/images/${encodeURI(st.introImage)}" alt="${escapeHtml(st.introImageTitle || st.title)}" loading="lazy" onerror="this.closest('.intro-image-wrap').style.display='none'"></figure>` : '';
  return `<div class="accordion intro-accordion${opened?' open':''}"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
+}
+function stopIntroSequence(){
+ introSequenceToken++;
+ if(introSequenceAudio){
+  introSequenceAudio.pause();
+  introSequenceAudio.src='';
+  introSequenceAudio=null;
+ }
+ document.querySelectorAll('[id^="introSequenceBtn-"]').forEach(btn=>btn.textContent='Přehrát úvod a zadání');
+}
+function setIntroSequenceStatus(id, text){
+ const el=$(`#introSequenceStatus-${id}`);
+ if(el) el.textContent=text;
+}
+function toggleIntroSequence(id){
+ const btn=$(`#introSequenceBtn-${id}`);
+ if(introSequenceAudio && !introSequenceAudio.paused){
+  stopIntroSequence();
+  setIntroSequenceStatus(id,'Přehrávání zastaveno.');
+  return;
+ }
+ const token=++introSequenceToken;
+ if(btn) btn.textContent='Zastavit audio';
+ setIntroSequenceStatus(id,'Přehrávám úvod...');
+ playIntroSequencePart(id,0,token);
+}
+function playIntroSequencePart(id,index,token){
+ const st=station(id);
+ const seq=currentIntroAudioSequence(st, false);
+ if(!seq || !seq[index] || token!==introSequenceToken){
+  stopIntroSequence();
+  setIntroSequenceStatus(id,'Audio dokončeno.');
+  return;
+ }
+ const part=seq[index];
+ const audio=new Audio('assets/audio/'+encodeURI(part.src));
+ introSequenceAudio=audio;
+ audio.preload='auto';
+ audio.onplaying=()=>setIntroSequenceStatus(id, part.label || `Přehrávám část ${index+1}/${seq.length}...`);
+ audio.onerror=()=>setIntroSequenceStatus(id,'Audio se nepodařilo přehrát.');
+ audio.onended=()=>playIntroSequencePart(id,index+1,token);
+ audio.ontimeupdate=()=>{
+  if(part.end && audio.currentTime>=Number(part.end)){
+   audio.pause();
+   playIntroSequencePart(id,index+1,token);
+  }
+ };
+ audio.play().catch(()=>setIntroSequenceStatus(id,'Přehrání audia se nepodařilo.'));
 }
 function renderHintContent(hint){
  if(typeof hint === 'string') return ptxt(hint);
@@ -1696,7 +1759,7 @@ async function adminPreviewStation(id=null){
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const jingleControl = id===5 ? `<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>` : '';
- const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true, variant)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
  const token=`${id}-${Date.now()}`;
  window._adminPreviewToken=token;
  const updatePreview=secretHtml=>{
