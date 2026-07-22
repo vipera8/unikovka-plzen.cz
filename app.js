@@ -637,6 +637,9 @@ function currentIntroAudioSequence(st, firstScreen=false, variant=variantForStat
  const seq=st?.introAudioSequence;
  return Array.isArray(seq) && seq.length ? seq : null;
 }
+function introAudioSequenceAttr(sequence){
+ return sequence.map(part=>encodeURIComponent(typeof part==='string' ? part : part.src)).join('|');
+}
 function stationImage(st, firstScreen=false){
  const img=currentStationImage(st, firstScreen);
  if(!img) return '';
@@ -648,13 +651,27 @@ function introPanel(st, firstScreen=false, intro='', opened=false, variant=varia
  const sequence=currentIntroAudioSequence(st, firstScreen, variant);
  const audio=currentIntroAudio(st, firstScreen, variant);
  const audioPart = sequence
-  ? `<div class="intro-sequence-player"><button id="introSequenceBtn-${st.id}" class="btn secondary" type="button" onclick="toggleIntroSequence(${st.id})">Přehrát úvod a zadání</button><p id="introSequenceStatus-${st.id}" class="small muted">Audio obsahuje úvod, znělku a navazující zadání.</p></div>`
+  ? `<audio class="intro-player" controls preload="metadata" src="assets/audio/${encodeURI(typeof sequence[0]==='string' ? sequence[0] : sequence[0].src)}" data-sequence="${introAudioSequenceAttr(sequence)}" data-sequence-index="0" onended="advanceIntroSequence(this)"></audio>`
   : audio
   ? `<audio class="intro-player" controls preload="metadata" src="assets/audio/${encodeURI(audio)}"></audio>`
   : `<p class="small muted">Úvodní audio pro tuto zastávku zatím chybí.</p>`;
  const extraTitle = st.introImageTitle ? `<div class="intro-image-title">${escapeHtml(st.introImageTitle)}</div>` : '';
  const extraImage = st.introImage ? `<figure class="intro-image-wrap"><img class="intro-inline-image" src="assets/images/${encodeURI(st.introImage)}" alt="${escapeHtml(st.introImageTitle || st.title)}" loading="lazy" onerror="this.closest('.intro-image-wrap').style.display='none'"></figure>` : '';
  return `<div class="accordion intro-accordion${opened?' open':''}"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
+}
+function advanceIntroSequence(audio){
+ const parts=(audio.dataset.sequence||'').split('|').filter(Boolean).map(decodeURIComponent);
+ if(parts.length<2) return;
+ const nextIndex=Number(audio.dataset.sequenceIndex||0)+1;
+ if(nextIndex>=parts.length){
+  audio.dataset.sequenceIndex='0';
+  audio.src='assets/audio/'+encodeURI(parts[0]);
+  audio.load();
+  return;
+ }
+ audio.dataset.sequenceIndex=String(nextIndex);
+ audio.src='assets/audio/'+encodeURI(parts[nextIndex]);
+ audio.play().catch(()=>{});
 }
 function stopIntroSequence(){
  introSequenceToken++;
