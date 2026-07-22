@@ -25,7 +25,7 @@
                          "image":  "01_Groll_nadrazi.jpg",
                          "introAudio":  "01_Hlavni_nadrazi_audio_Groll_uvod_1.mp3",
                          "image2":  "01_nadrazi_uvod_2.jpg",
-                         "introAudio2":  "01_Hlavni_nadrazi_audio_Groll_uvod_2.mp3",
+                         "introAudio2":  "01_Hlavni_nadrazi_audio_Groll_uvod_2_oprava_textu.mp3",
                          "hintCount":  3
                      },
                      {
@@ -43,7 +43,7 @@
                          "intro":  "Voda! Bez ní bychom v sudech měli jen prach a vy byste dneska měli v hrdle jako na Sahaře. Ale nebudeme tu jen tak lelkovat a krmit labutě. Máme práci!\n\nPostavte se na bílou značku, co je kousek za půlkou na té červené pravé lávce. Na zemi uvidíte bílý vyznačený obdélník. Přesně tam vás potřebuji mít. Tak a teď si z batohu vyndejte kompas z předchozí zastávky a můj deník. Nalistujte stránku s kresbami významných plzeňských staveb.\n\nOdsud je město potřeba nejprve správně přečíst. A věřte mi… některé stavby umějí prozradit víc, než se na první pohled zdá.",
                          "more":  "Tahle řeka, Radbuza, pramení až v Českém lese a v Plzni se potkává se svými třemi sestrami. Všimli jste si, jak je tu nábřeží široké a upravené? Kousek dál se mu říká Anglické nábřeží. To proto, že ho kdysi nechal plzeňský starosta upravit po vzoru Londýna. Chtěl mít z Plzně světové město, což se mu – hlavně díky mému pivu – podařilo!\n\nA pamatujte, není voda jako voda. Plzeňské pivo je světový unikát i díky tomu, že je zdejší voda neobyčejně měkká. Tvrdá voda je dobrá tak na praní fuseklí pro pradleny, ale na vaření pořádného ležáku potřebujete tuhle plzeňskou dobrotu. My ji sice nebereme přímo z řeky, ale z hlubokých artéských studní, ale bez téhle řeky by Plzeň nebyla Plzní.",
                          "image":  "02_Groll_radbuzska_naplavka.jpg",
-                         "introAudio":  "02_Radbuzska_naplavka_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "02_Radbuzska_naplavka_audio_Groll_uvod_1_oprava_textu.mp3",
                          "hintCount":  3
                      },
                      {
