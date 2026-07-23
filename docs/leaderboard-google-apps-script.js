@@ -12,7 +12,7 @@ const SHEETS = {
   secretImages: 'SecretImages'
 };
 const HEADERS = {
-  accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt','activeDeviceId','activeDeviceAt'],
+  accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt','activeDeviceId','activeDeviceAt','createdAtCz','assignedAtCz','startedAtCz','lastUsedAtCz','reviewEmailSentAtCz','activeDeviceAtCz','gameStatus','currentStation','stationTitle','updatedAtCz','finishTimeCz'],
   leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil','accessCode','accessCodeCreatedAt'],
   vouchers: ['voucherCode','status','buyerName','buyerEmail','phone','amountKc','variant','createdAt','paidAt','validUntil','leadRow','usedAt','notes','accessCode'],
   secrets: ['stationId','title','unlockCode','hintsJson','solutionJson'],
@@ -22,8 +22,49 @@ const HEADERS = {
   leaderboard: ['id','team','total','hints','solutions','title','date','dateCz','variant']
 };
 
-function onOpen(){ SpreadsheetApp.getUi().createMenu('Hravá Plzeň').addItem('Připravit tabulky','setupSheets').addItem('Nastavit rozbalovací status a ceny','setupLeadDropdowns').addItem('Vygenerovat voucherový kód','generateVoucherManual').addItem('Nainstalovat automatické e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kódů - delší varianta','generateTenLongCodes').addItem('Vygenerovat 10 kódů - krátká varianta','generateTenShortCodes').addToUi(); }
+function onOpen(){ SpreadsheetApp.getUi().createMenu('Hravá Plzeň').addItem('Připravit tabulky','setupSheets').addItem('Nastavit rozbalovací status a ceny','setupLeadDropdowns').addItem('Obnovit přehled přístupových kódů','refreshAccessCodeOverview').addItem('Vygenerovat voucherový kód','generateVoucherManual').addItem('Nainstalovat automatické e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kódů - delší varianta','generateTenLongCodes').addItem('Vygenerovat 10 kódů - krátká varianta','generateTenShortCodes').addToUi(); }
 function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); }
+function refreshAccessCodeOverview(){
+  setupSheets();
+  const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
+  const vals=sh.getDataRange().getValues();
+  if(vals.length<2) return;
+  const headers=vals[0].map(String);
+  const teamRows=rows_(SHEETS.teams).filter(t=>String(t.accessCode||'').trim()).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  const latestByCode={};
+  teamRows.forEach(t=>{
+    const code=normalize_(t.accessCode);
+    if(code && !latestByCode[code]) latestByCode[code]=t;
+  });
+  for(let r=1;r<vals.length;r++){
+    const row={};
+    headers.forEach((h,i)=>row[h]=vals[r][i]);
+    const code=normalize_(row.accessCode);
+    if(!code) continue;
+    const team=latestByCode[code];
+    const values=accessCodeTimeValues_({
+      createdAt:row.createdAt,
+      assignedAt:row.assignedAt,
+      startedAt:team ? (row.startedAt || team.startTime || '') : row.startedAt,
+      lastUsedAt:row.lastUsedAt,
+      reviewEmailSentAt:row.reviewEmailSentAt,
+      activeDeviceAt:row.activeDeviceAt,
+      teamId:team ? String(team.id||'') : String(row.teamId||''),
+      teamName:team ? String(team.team||'') : String(row.teamName||''),
+      currentStation:team ? Number(team.currentStation||'') || '' : String(row.currentStation||''),
+      stationTitle:team ? String(team.stationTitle||'') : String(row.stationTitle||''),
+      updatedAtCz:team ? (String(team.updatedAtCz||'') || formatDateTimeCz_(team.updatedAt)) : String(row.updatedAtCz||''),
+      finishTimeCz:team ? (String(team.finishTimeCz||'') || formatDateTimeCz_(team.finishTime)) : String(row.finishTimeCz||''),
+      gameStatus:team ? accessCodeStatusFromTeam_(team) : (String(row.startedAt||'').trim() ? 'hraje se' : (String(row.lastUsedAt||'').trim() ? 'kód použit' : 'nepoužitý'))
+    });
+    Object.keys(values).forEach(k=>{
+      const c=headers.indexOf(k);
+      if(c>=0) sh.getRange(r+1,c+1).setValue(values[k]);
+    });
+  }
+  SpreadsheetApp.flush();
+  try{ SpreadsheetApp.getUi().alert('Prehled kodu byl obnoven.'); }catch(e){}
+}
 const LEAD_STATUS_OPTIONS = ['nové','čeká na platbu','potvrzeno','zaplaceno','odesláno','čeká na odpověď','zrušeno','vyřízeno'];
 const LEAD_AMOUNT_OPTIONS = ['1200','1500','1600','1900'];
 function setupLeadStatusValidation(){ setupLeadDropdowns_(); }
@@ -151,6 +192,18 @@ function formatDateTimeCz_(value){
   if(isNaN(d.getTime())) return '';
   return Utilities.formatDate(d, 'Europe/Prague', 'dd.MM.yyyy HH:mm:ss');
 }
+function accessCodeTimeValues_(values){
+  const out=Object.assign({}, values || {});
+  const pairs={createdAt:'createdAtCz',assignedAt:'assignedAtCz',startedAt:'startedAtCz',lastUsedAt:'lastUsedAtCz',reviewEmailSentAt:'reviewEmailSentAtCz',activeDeviceAt:'activeDeviceAtCz'};
+  Object.keys(pairs).forEach(k=>{
+    if(Object.prototype.hasOwnProperty.call(out,k)) out[pairs[k]]=formatDateTimeCz_(out[k]);
+  });
+  return out;
+}
+function accessCodeStatusFromTeam_(team){
+  if(!team) return '';
+  return String(team.finished||'0')==='1' || team.finished===true ? 'dohráno' : 'hraje se';
+}
 
 function stationSecret_(id){ return rows_(SHEETS.secrets).find(r=>Number(r.stationId)===Number(id)); }
 function secretImage_(name){ const target=String(name||'').trim(); if(!target) return null; return rows_(SHEETS.secretImages).find(r=>String(r.fileName||'').trim()===target) || null; }
@@ -182,7 +235,7 @@ function variantFromCode_(code, orderType){ const c=normalize_(code).replace(/[^
 function variantFromParam_(p){ const v=String(p.variant||p.gameVariant||'').toLowerCase(); if(v==='short' || v==='kratka' || v==='krátká') return 'short'; if(v==='long' || v==='delsi' || v==='delší') return 'long'; return variantFromCode_(p.accessCode||p.code||'', p.orderType||''); }
 function variantPrefix_(variant){ return variant==='short' ? 'K' : 'D'; }
 function variantLabel_(variant){ return variant==='short' ? 'krátká varianta' : 'delší varianta'; }
-function touchAccessCode_(code, values){ const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const vals=sh.getDataRange().getValues(); const headers=vals[0].map(String); const target=normalize_(code); for(let r=1;r<vals.length;r++){ if(normalize_(vals[r][0])===target){ Object.keys(values).forEach(k=>{ const c=headers.indexOf(k); if(c>=0) sh.getRange(r+1,c+1).setValue(values[k]); }); return; } } }
+function touchAccessCode_(code, values){ const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const vals=sh.getDataRange().getValues(); const headers=vals[0].map(String); const target=normalize_(code); const enriched=accessCodeTimeValues_(values); for(let r=1;r<vals.length;r++){ if(normalize_(vals[r][0])===target){ Object.keys(enriched).forEach(k=>{ const c=headers.indexOf(k); if(c>=0) sh.getRange(r+1,c+1).setValue(enriched[k]); }); return; } } }
 function deviceId_(e){ return String(e.parameter.deviceId||'').trim(); }
 function accessCodeDeviceConflict_(rec, deviceId){ const active=String(rec && rec.activeDeviceId || '').trim(); return !!(deviceId && active && active!==deviceId); }
 function ensureActiveDevice_(accessCode, e){
@@ -202,6 +255,7 @@ function validateAccessCode_(e){
   const deviceId=deviceId_(e), takeover=String(e.parameter.takeover||'')==='1';
   if(accessCodeDeviceConflict_(rec, deviceId) && !takeover) return json_({ok:false,error:'device_in_use',canTakeover:true,accessCode:code,variant},e);
   const touch={lastUsedAt:new Date().toISOString(),variant};
+  if(!String(rec.startedAt||'').trim()) touch.gameStatus='kód použit';
   if(deviceId){ touch.activeDeviceId=deviceId; touch.activeDeviceAt=new Date().toISOString(); }
   touchAccessCode_(code,touch);
   return json_({ok:true,accessCode:code,variant,customerName:String(rec.customerName||''),email:String(rec.email||''),orderType:String(rec.orderType||'')},e);
@@ -317,7 +371,7 @@ function leadPaymentIdentifier_(name,p,item){
 }
 function createAccessCodes_(p){
   const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const count=Math.max(1,Math.min(100,Number(p.count||1))); const existing=new Set(rows_(SHEETS.accessCodes).map(r=>normalize_(r.accessCode))); const out=[], batch=[], now=new Date().toISOString(); const variant=variantFromParam_(p); const prefix=variantPrefix_(variant);
-  while(out.length<count){ const code='GZ-'+prefix+'-'+Utilities.getUuid().replace(/-/g,'').slice(0,8).toUpperCase(); if(existing.has(normalize_(code))) continue; existing.add(normalize_(code)); out.push(code); const item={accessCode:code,customerName:String(p.customerName||''),email:String(p.email||''),phone:String(p.phone||''),orderType:String(p.orderType||variantLabel_(variant)),variant,status:String(p.status||'active'),createdAt:now,assignedAt:String(p.customerName||p.email||p.phone||'')?now:'',notes:String(p.notes||''),teamId:'',teamName:'',startedAt:'',lastUsedAt:'',reviewEmailSentAt:''}; batch.push(headers.map(h=>item[h]!==undefined?item[h]:'')); }
+  while(out.length<count){ const code='GZ-'+prefix+'-'+Utilities.getUuid().replace(/-/g,'').slice(0,8).toUpperCase(); if(existing.has(normalize_(code))) continue; existing.add(normalize_(code)); out.push(code); const assignedAt=String(p.customerName||p.email||p.phone||'')?now:''; const item=accessCodeTimeValues_({accessCode:code,customerName:String(p.customerName||''),email:String(p.email||''),phone:String(p.phone||''),orderType:String(p.orderType||variantLabel_(variant)),variant,status:String(p.status||'active'),createdAt:now,assignedAt,notes:String(p.notes||''),teamId:'',teamName:'',startedAt:'',lastUsedAt:'',reviewEmailSentAt:'',gameStatus:'nepoužitý',currentStation:'',stationTitle:'',updatedAtCz:'',finishTimeCz:''}); batch.push(headers.map(h=>item[h]!==undefined?item[h]:'')); }
   sh.getRange(sh.getLastRow()+1,1,batch.length,headers.length).setValues(batch); return out;
 }
 function saveTeamState_(e){
@@ -328,7 +382,7 @@ function saveTeamState_(e){
   const item={id,team:String(e.parameter.team||''),accessCode,variant,currentStation:Number(e.parameter.currentStation||1),stationTitle:String(e.parameter.stationTitle||''),startTime,updatedAt,finished:String(e.parameter.finished||'0'),finishTime,hints:String(e.parameter.hints||'{}'),solutions:String(e.parameter.solutions||'{}'),wrong:String(e.parameter.wrong||'{}'),wrongTotal:Number(e.parameter.wrongTotal||0),completed:String(e.parameter.completed||'[]'),lastPos:String(e.parameter.lastPos||''),startTimeCz:formatDateTimeCz_(startTime),updatedAtCz:formatDateTimeCz_(updatedAt),finishTimeCz:formatDateTimeCz_(finishTime)};
   const values=headers.map(h=>item[h]!==undefined?item[h]:'');
   if(row>0) sh.getRange(row,1,1,values.length).setValues([values]); else sh.appendRow(values);
-  if(accessCode) touchAccessCode_(accessCode,{teamId:id,teamName:String(e.parameter.team||''),startedAt:String(e.parameter.startTime||''),lastUsedAt:new Date().toISOString(),variant});
+  if(accessCode) touchAccessCode_(accessCode,{teamId:id,teamName:String(e.parameter.team||''),startedAt:String(e.parameter.startTime||''),lastUsedAt:new Date().toISOString(),variant,gameStatus:accessCodeStatusFromTeam_(item),currentStation:item.currentStation,stationTitle:item.stationTitle,updatedAtCz:item.updatedAtCz,finishTimeCz:item.finishTimeCz});
   if(String(e.parameter.finished||'0')==='1' && finishTime) sendReviewEmailIfNeeded_(accessCode, String(e.parameter.team||''), variant);
   return json_({ok:true},e);
 }
