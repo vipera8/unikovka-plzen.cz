@@ -1776,11 +1776,15 @@ async function adminPreviewStation(id=null){
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const jingleControl = id===5 ? `<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>` : '';
- const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true, variant)}${jingleControl}${more}${secretHtml}<div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ const secretId=`adminPreviewSecrets-${id}`;
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true, variant)}${jingleControl}${more}<div id="${secretId}">${secretHtml}</div><div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
  const token=`${id}-${Date.now()}`;
  window._adminPreviewToken=token;
  const updatePreview=secretHtml=>{
-  if(window._adminPreviewToken===token) modal(shellHtml(secretHtml), false);
+  if(window._adminPreviewToken!==token) return;
+  const target=document.getElementById(secretId);
+  if(target) target.innerHTML=secretHtml;
+  else modal(shellHtml(secretHtml), false);
  };
  const cached=adminStationCache.get(id);
  if(cached?.hints){
