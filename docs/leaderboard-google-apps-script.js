@@ -23,22 +23,15 @@ const HEADERS = {
 };
 
 function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
-const ACCESS_CODE_STATUS_OPTIONS = ['nepouzity','kod pouzit','hraje se','dohrano'];
-const ACCESS_CODE_ORDER_TYPE_OPTIONS = ['delsi varianta','kratka varianta','rezervace - delsi varianta','rezervace - kratka varianta','darkovy poukaz - delsi varianta','darkovy poukaz - kratka varianta'];
 function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); setupAccessCodeDropdowns_(); }
 function setupAccessCodeDropdowns_(){
   const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
   const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
   const statusCol=headers.indexOf('gameStatus')+1;
-  if(statusCol>0){
-    const rule=SpreadsheetApp.newDataValidation().requireValueInList(ACCESS_CODE_STATUS_OPTIONS,true).setAllowInvalid(false).build();
-    sh.getRange(2,statusCol,Math.max(sh.getMaxRows()-1,1),1).setDataValidation(rule);
-  }
   const orderTypeCol=headers.indexOf('orderType')+1;
-  if(orderTypeCol>0){
-    const rule=SpreadsheetApp.newDataValidation().requireValueInList(ACCESS_CODE_ORDER_TYPE_OPTIONS,true).setAllowInvalid(false).build();
-    sh.getRange(2,orderTypeCol,Math.max(sh.getMaxRows()-1,1),1).setDataValidation(rule);
-  }
+  [statusCol,orderTypeCol].filter(c=>c>0).forEach(c=>{
+    sh.getRange(2,c,Math.max(sh.getMaxRows()-1,1),1).clearDataValidations();
+  });
 }
 function refreshAccessCodeOverview(){
   setupSheets();
