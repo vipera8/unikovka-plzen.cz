@@ -150,10 +150,10 @@ function publicTeamState(s){
   updatedAt:new Date().toISOString()
  };
 }
-function syncTeamState(s){
+function teamStateParams(s){
  const data=publicTeamState(s);
- if(!data?.id) return;
- fireAndForget(monitorUrl('state', {
+ if(!data?.id) return null;
+ return {
   deviceId:deviceId(),
   id:data.id,
   team:data.team,
@@ -171,7 +171,17 @@ function syncTeamState(s){
   wrongTotal:data.wrongTotal,
   completed:JSON.stringify(data.completed),
   lastPos:data.lastPos ? JSON.stringify(data.lastPos) : ''
- }));
+ };
+}
+function syncTeamState(s){
+ const params=teamStateParams(s);
+ if(!params) return;
+ fireAndForget(monitorUrl('state', params));
+}
+async function syncTeamStateNow(s){
+ const params=teamStateParams(s);
+ if(!params) return null;
+ return await backendRequest('state', params);
 }
 function sendMonitorEvent(row, s){
  if(!s?.id) return;
@@ -1054,7 +1064,7 @@ async function checkCode(expectedStationId, btn){
  window._stationCodeChecking=false;
  if(ok){
   closeModal();
-  completeStation(expectedId);
+  await completeStation(expectedId);
  } else {
   s.wrong[st.id]=(s.wrong[st.id]||0)+1;
   s.wrongTotal=(s.wrongTotal||0)+1;
@@ -1070,7 +1080,7 @@ async function checkCode(expectedStationId, btn){
   if(input) input.disabled=false;
  }
 }
-function completeStation(expectedStationId){
+async function completeStation(expectedStationId){
  const s=getState();
  const expectedId=Number(expectedStationId || s.currentStation);
  if(s.currentStation!==expectedId || s.completed.includes(expectedId)){
@@ -1100,6 +1110,7 @@ function completeStation(expectedStationId){
   if(s.gpsMessage) delete s.gpsMessage[nextId];
  }
  saveState(s);
+ await syncTeamStateNow(s).catch(()=>{});
  if(!isFinal) returnToGame();
  app.querySelector('.phone')?.classList.add('wow');
  const next = isFinal ? null : station(s.currentStation);
@@ -1140,9 +1151,9 @@ async function finishCode(expectedStationId, btn){
    return;
   }
   if(data?.ok){
-   closeModal();
-   window._stationCodeChecking=false;
-   completeStation(expectedId);
+  closeModal();
+  window._stationCodeChecking=false;
+   await completeStation(expectedId);
   } else {
    toast('Finální slovo nesedí. Zkontrolujte pořadí lahviček.');
    window._stationCodeChecking=false;
