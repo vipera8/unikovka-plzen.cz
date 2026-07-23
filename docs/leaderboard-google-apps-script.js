@@ -22,8 +22,18 @@ const HEADERS = {
   leaderboard: ['id','team','total','hints','solutions','title','date','dateCz','variant']
 };
 
-function onOpen(){ SpreadsheetApp.getUi().createMenu('Hravá Plzeň').addItem('Připravit tabulky','setupSheets').addItem('Nastavit rozbalovací status a ceny','setupLeadDropdowns').addItem('Obnovit přehled přístupových kódů','refreshAccessCodeOverview').addItem('Vygenerovat voucherový kód','generateVoucherManual').addItem('Nainstalovat automatické e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kódů - delší varianta','generateTenLongCodes').addItem('Vygenerovat 10 kódů - krátká varianta','generateTenShortCodes').addToUi(); }
-function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); }
+function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
+const ACCESS_CODE_STATUS_OPTIONS = ['nepouzity','kod pouzit','hraje se','dohrano'];
+function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); setupAccessCodeDropdowns_(); }
+function setupAccessCodeDropdowns_(){
+  const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  const c=headers.indexOf('gameStatus')+1;
+  if(c>0){
+    const rule=SpreadsheetApp.newDataValidation().requireValueInList(ACCESS_CODE_STATUS_OPTIONS,true).setAllowInvalid(false).build();
+    sh.getRange(2,c,Math.max(sh.getMaxRows()-1,1),1).setDataValidation(rule);
+  }
+}
 function refreshAccessCodeOverview(){
   setupSheets();
   const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
