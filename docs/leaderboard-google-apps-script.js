@@ -55,7 +55,7 @@ function refreshAccessCodeOverview(){
       stationTitle:team ? String(team.stationTitle||'') : String(row.stationTitle||''),
       updatedAtCz:team ? (String(team.updatedAtCz||'') || formatDateTimeCz_(team.updatedAt)) : String(row.updatedAtCz||''),
       finishTimeCz:team ? (String(team.finishTimeCz||'') || formatDateTimeCz_(team.finishTime)) : String(row.finishTimeCz||''),
-      gameStatus:team ? accessCodeStatusFromTeam_(team) : (String(row.startedAt||'').trim() ? 'hraje se' : (String(row.lastUsedAt||'').trim() ? 'kód použit' : 'nepoužitý'))
+      gameStatus:team ? accessCodeStatusFromTeam_(team) : (String(row.startedAt||'').trim() ? 'hraje se' : (String(row.lastUsedAt||'').trim() ? 'kod pouzit' : 'nepouzity'))
     });
     Object.keys(values).forEach(k=>{
       const c=headers.indexOf(k);
@@ -202,7 +202,7 @@ function accessCodeTimeValues_(values){
 }
 function accessCodeStatusFromTeam_(team){
   if(!team) return '';
-  return String(team.finished||'0')==='1' || team.finished===true ? 'dohráno' : 'hraje se';
+  return String(team.finished||'0')==='1' || team.finished===true ? 'dohrano' : 'hraje se';
 }
 
 function stationSecret_(id){ return rows_(SHEETS.secrets).find(r=>Number(r.stationId)===Number(id)); }
@@ -255,7 +255,7 @@ function validateAccessCode_(e){
   const deviceId=deviceId_(e), takeover=String(e.parameter.takeover||'')==='1';
   if(accessCodeDeviceConflict_(rec, deviceId) && !takeover) return json_({ok:false,error:'device_in_use',canTakeover:true,accessCode:code,variant},e);
   const touch={lastUsedAt:new Date().toISOString(),variant};
-  if(!String(rec.startedAt||'').trim()) touch.gameStatus='kód použit';
+  if(!String(rec.startedAt||'').trim()) touch.gameStatus='kod pouzit';
   if(deviceId){ touch.activeDeviceId=deviceId; touch.activeDeviceAt=new Date().toISOString(); }
   touchAccessCode_(code,touch);
   return json_({ok:true,accessCode:code,variant,customerName:String(rec.customerName||''),email:String(rec.email||''),orderType:String(rec.orderType||'')},e);
@@ -371,7 +371,7 @@ function leadPaymentIdentifier_(name,p,item){
 }
 function createAccessCodes_(p){
   const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const count=Math.max(1,Math.min(100,Number(p.count||1))); const existing=new Set(rows_(SHEETS.accessCodes).map(r=>normalize_(r.accessCode))); const out=[], batch=[], now=new Date().toISOString(); const variant=variantFromParam_(p); const prefix=variantPrefix_(variant);
-  while(out.length<count){ const code='GZ-'+prefix+'-'+Utilities.getUuid().replace(/-/g,'').slice(0,8).toUpperCase(); if(existing.has(normalize_(code))) continue; existing.add(normalize_(code)); out.push(code); const assignedAt=String(p.customerName||p.email||p.phone||'')?now:''; const item=accessCodeTimeValues_({accessCode:code,customerName:String(p.customerName||''),email:String(p.email||''),phone:String(p.phone||''),orderType:String(p.orderType||variantLabel_(variant)),variant,status:String(p.status||'active'),createdAt:now,assignedAt,notes:String(p.notes||''),teamId:'',teamName:'',startedAt:'',lastUsedAt:'',reviewEmailSentAt:'',gameStatus:'nepoužitý',currentStation:'',stationTitle:'',updatedAtCz:'',finishTimeCz:''}); batch.push(headers.map(h=>item[h]!==undefined?item[h]:'')); }
+  while(out.length<count){ const code='GZ-'+prefix+'-'+Utilities.getUuid().replace(/-/g,'').slice(0,8).toUpperCase(); if(existing.has(normalize_(code))) continue; existing.add(normalize_(code)); out.push(code); const assignedAt=String(p.customerName||p.email||p.phone||'')?now:''; const item=accessCodeTimeValues_({accessCode:code,customerName:String(p.customerName||''),email:String(p.email||''),phone:String(p.phone||''),orderType:String(p.orderType||variantLabel_(variant)),variant,status:String(p.status||'active'),createdAt:now,assignedAt,notes:String(p.notes||''),teamId:'',teamName:'',startedAt:'',lastUsedAt:'',reviewEmailSentAt:'',gameStatus:'nepouzity',currentStation:'',stationTitle:'',updatedAtCz:'',finishTimeCz:''}); batch.push(headers.map(h=>item[h]!==undefined?item[h]:'')); }
   sh.getRange(sh.getLastRow()+1,1,batch.length,headers.length).setValues(batch); return out;
 }
 function saveTeamState_(e){
