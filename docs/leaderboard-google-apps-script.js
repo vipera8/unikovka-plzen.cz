@@ -54,6 +54,7 @@ function refreshAccessCodeOverview(){
     const team=latestByCode[code];
     const values=accessCodeTimeValues_({
       createdAt:row.createdAt,
+      orderType:cleanAccessCodeOrderType_(row.orderType,row.variant),
       assignedAt:row.assignedAt,
       startedAt:team ? (row.startedAt || team.startTime || '') : row.startedAt,
       lastUsedAt:row.lastUsedAt,
@@ -104,8 +105,8 @@ function setLeadDropdown_(sh,headers,columnName,options,rows){
   SpreadsheetApp.flush();
 }
 function generateTenFreeCodes(){ generateTenLongCodes(); }
-function generateTenLongCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'delší varianta',variant:'long'}); SpreadsheetApp.getUi().alert('Vygenerované kódy pro delší variantu:\n'+codes.join('\n')); }
-function generateTenShortCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'krátká varianta',variant:'short'}); SpreadsheetApp.getUi().alert('Vygenerované kódy pro krátkou variantu:\n'+codes.join('\n')); }
+function generateTenLongCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'delsi varianta',variant:'long'}); SpreadsheetApp.getUi().alert('Vygenerovane kody pro delsi variantu:\n'+codes.join('\n')); }
+function generateTenShortCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'kratka varianta',variant:'short'}); SpreadsheetApp.getUi().alert('Vygenerovane kody pro kratkou variantu:\n'+codes.join('\n')); }
 function generateVoucherManual(){ setupSheets(); const code=createVoucherCode_(); const sh=getSheet_(SHEETS.vouchers, HEADERS.vouchers); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const item={voucherCode:code,status:'vytvořen',createdAt:czDateTime_()}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); SpreadsheetApp.getUi().alert('Vygenerovaný voucherový kód:\n'+code); }
 function createVoucherCode_(){
   const sh=getSheet_(SHEETS.vouchers, HEADERS.vouchers);
@@ -214,6 +215,14 @@ function accessCodeStatusFromTeam_(team){
   if(!team) return '';
   return String(team.finished||'0')==='1' || team.finished===true ? 'dohrano' : 'hraje se';
 }
+function cleanAccessCodeOrderType_(orderType, variant){
+  const v=String(variant||'').toLowerCase();
+  const text=String(orderType||'');
+  const source=/voucher|poukaz/i.test(text) ? 'darkovy poukaz - ' : (/rezerv/i.test(text) ? 'rezervace - ' : '');
+  if(v==='short') return source+'kratka varianta';
+  if(v==='long') return source+'delsi varianta';
+  return text;
+}
 
 function stationSecret_(id){ return rows_(SHEETS.secrets).find(r=>Number(r.stationId)===Number(id)); }
 function secretImage_(name){ const target=String(name||'').trim(); if(!target) return null; return rows_(SHEETS.secretImages).find(r=>String(r.fileName||'').trim()===target) || null; }
@@ -244,7 +253,7 @@ function accessCodeRecord_(code){ const target=normalize_(code); return rows_(SH
 function variantFromCode_(code, orderType){ const c=normalize_(code).replace(/[^A-Z0-9]/g,''); const order=String(orderType||'').toLowerCase(); if(c.indexOf('GZK')===0 || order.indexOf('krat')>=0 || order.indexOf('krát')>=0 || order.indexOf('short')>=0) return 'short'; return 'long'; }
 function variantFromParam_(p){ const v=String(p.variant||p.gameVariant||'').toLowerCase(); if(v==='short' || v==='kratka' || v==='krátká') return 'short'; if(v==='long' || v==='delsi' || v==='delší') return 'long'; return variantFromCode_(p.accessCode||p.code||'', p.orderType||''); }
 function variantPrefix_(variant){ return variant==='short' ? 'K' : 'D'; }
-function variantLabel_(variant){ return variant==='short' ? 'krátká varianta' : 'delší varianta'; }
+function variantLabel_(variant){ return variant==='short' ? 'kratka varianta' : 'delsi varianta'; }
 function touchAccessCode_(code, values){ const sh=getSheet_(SHEETS.accessCodes,HEADERS.accessCodes); const vals=sh.getDataRange().getValues(); const headers=vals[0].map(String); const target=normalize_(code); const enriched=accessCodeTimeValues_(values); for(let r=1;r<vals.length;r++){ if(normalize_(vals[r][0])===target){ Object.keys(enriched).forEach(k=>{ const c=headers.indexOf(k); if(c>=0) sh.getRange(r+1,c+1).setValue(enriched[k]); }); return; } } }
 function deviceId_(e){ return String(e.parameter.deviceId||'').trim(); }
 function accessCodeDeviceConflict_(rec, deviceId){ const active=String(rec && rec.activeDeviceId || '').trim(); return !!(deviceId && active && active!==deviceId); }
