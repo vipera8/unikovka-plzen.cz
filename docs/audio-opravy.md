@@ -14,7 +14,7 @@ Tento seznam slouzi k prubeznemu sbirani casti, ktere bude potreba znovu vygener
 
 | Stav | Zastavka | Audio | Co je potreba opravit | Poznamka |
 | --- | --- | --- | --- | --- |
-| K priprave | 1/13 Hlavni nadrazi | Uvod / zadani po odemceni deniku | Text se zmenil na "prohledejte denik poradne". Je potreba zkontrolovat, zda audio rika starsi formulaci. | Pri finalni kontrole rozhodnout, zda se bude generovat cela cast, nebo jen navazujici usek. |
+| K priprave | 1/13 Hlavni nadrazi | Uvod / zadani po odemceni deniku | Text druhe obrazovky byl zjednodusen: denik obsahuje pomucku, ktera ukaze, kam se v hale divat; hraci se maji postavit doprostred haly a pouzit tvar pruhledky. | Vygenerovat nove audio pro druhou cast po odemceni deniku. Soucasny soubor introAudio2 uz neodpovida textu. |
 | Nahrano | 5/13 Velke divadlo J. K. Tyla | Uvod / zadani se znelkou | Text u zadani byl upraven na skutecne/falesne okno a rytmicky vzor. | Cast po znelce je napojena jako navazujici audio za puvodni prvni cast a znelku. |
 | Nahrano | 7/13 Namesti Republiky | Uvod / zadani | Posledni odstavec zadani byl upraven kvuli rekonstrukci a vynechani domu U Zlate lode. | Vymenen soubor uvodniho audia. |
 | Nahrano | 8/13 Pivovarske muzeum a Plzenske podzemi | Uvod / zadani | Posledni odstavec zadani byl upraven na hledani znameni v oblouku nad vchodem do muzea. | Vymenen soubor uvodniho audia. |
