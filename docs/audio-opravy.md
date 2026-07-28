@@ -19,5 +19,5 @@ Tento seznam slouzi k prubeznemu sbirani casti, ktere bude potreba znovu vygener
 | Nahrano | 5/13 Velke divadlo J. K. Tyla | Uvod / zadani se znelkou | Text u zadani byl upraven na skutecne/falesne okno a rytmicky vzor. | Cast po znelce je napojena jako navazujici audio za puvodni prvni cast a znelku. |
 | Nahrano | 7/13 Namesti Republiky | Uvod / zadani | Posledni odstavec zadani byl upraven kvuli rekonstrukci a vynechani domu U Zlate lode. | Vymenen soubor uvodniho audia. |
 | Nahrano | 8/13 Pivovarske muzeum a Plzenske podzemi | Uvod / zadani | Posledni odstavec zadani byl upraven na hledani znameni v oblouku nad vchodem do muzea. | Vymenen soubor uvodniho audia. |
-| Nahrano | 9/13 Vodarenska vez a Masne kramy | Uvod / zadani | Posledni odstavec zadani byl upraven na "Podivejte se na cas na hodinkach...". | Vymenen soubor uvodniho audia. |
+| K priprave | 9/13 Vodarenska vez a Masne kramy | Uvod / zadani | Zadani bylo rozsireno: hraci maji porovnat cas na hodinkach s cisly na pamatni desce, pouzit odhalena cisla v Grollove dopise a vsimat si znameni Josefa Skody. | Vygenerovat nove uvodni audio. Soucasny soubor introAudio uz neodpovida textu. |
 | Nahrano | 13/13 Pivovar Prazdroj | Uvod / zadani | Zaver zadani byl prodlouzen o praci s 12 kartickami a nasbiranymi lahvickami. | Vymeneno jen pro dlouhou variantu; kratka varianta pouziva puvodni audio. |
