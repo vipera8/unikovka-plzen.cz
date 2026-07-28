@@ -22,7 +22,7 @@ const HEADERS = {
   leaderboard: ['id','team','total','hints','solutions','title','date','dateCz','variant']
 };
 
-function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
+function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Zpracovat zaplacene objednavky','processPaidLeadsManual').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
 function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); setupAccessCodeDropdowns_(); }
 function setupAccessCodeDropdowns_(){
   const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
@@ -102,6 +102,33 @@ function setLeadDropdown_(sh,headers,columnName,options,rows){
   const rule=SpreadsheetApp.newDataValidation().requireValueInList(options,true).setAllowInvalid(false).build();
   range.setDataValidation(rule);
   SpreadsheetApp.flush();
+}
+function processPaidLeadsManual(){
+  setupSheets();
+  const sh=getSheet_(SHEETS.leads, HEADERS.leads);
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  const lastRow=sh.getLastRow();
+  let processed=0, skipped=0;
+  const errors=[];
+  for(let row=2; row<=lastRow; row++){
+    const values=sh.getRange(row,1,1,headers.length).getValues()[0];
+    const item={}; headers.forEach((h,i)=>item[h]=values[i]);
+    if(normalizeLeadStatus_(item.status)!=='paid' || String(item.paidEmailSentAt||'').trim()){
+      skipped++;
+      continue;
+    }
+    try{
+      handleLeadStatusRow_(sh,row,headers);
+      const paidCol=headers.indexOf('paidEmailSentAt')+1;
+      const paidValue=paidCol>0 ? String(sh.getRange(row,paidCol).getValue()||'').trim() : '';
+      if(paidValue) processed++; else errors.push('Radek '+row+': objednavka nebyla zpracovana, zkontrolujte type a email.');
+    }catch(err){
+      errors.push('Radek '+row+': '+(err && err.message ? err.message : String(err)));
+    }
+  }
+  SpreadsheetApp.flush();
+  const message='Zpracovano: '+processed+'\nPreskoceno: '+skipped+(errors.length?'\n\nChyby:\n'+errors.join('\n'):'');
+  try{ SpreadsheetApp.getUi().alert(message); }catch(e){ Logger.log(message); }
 }
 function generateTenFreeCodes(){ generateTenLongCodes(); }
 function generateTenLongCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'delsi varianta',variant:'long'}); SpreadsheetApp.getUi().alert('Vygenerovane kody pro delsi variantu:\n'+codes.join('\n')); }
@@ -451,43 +478,42 @@ function reviewEmailBody_(teamName, variant){
   ].join('\n');
 }
 function leadStatusOnEdit_(e){
-  try{
-    const range=e && e.range;
-    if(!range) return;
-    const sh=range.getSheet();
-    if(sh.getName()!==SHEETS.leads || range.getRow()<2) return;
-    const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
-    const statusCol=headers.indexOf('status')+1;
-    if(range.getColumn()!==statusCol) return;
-    handleLeadStatusRow_(sh, range.getRow(), headers);
-  }catch(err){}
+  const range=e && e.range;
+  if(!range) return;
+  const sh=range.getSheet();
+  if(sh.getName()!==SHEETS.leads || range.getRow()<2) return;
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  const statusCol=headers.indexOf('status')+1;
+  if(range.getColumn()!==statusCol) return;
+  handleLeadStatusRow_(sh, range.getRow(), headers);
 }
 function handleLeadStatusRow_(sh, row, headers){
   const values=sh.getRange(row,1,1,headers.length).getValues()[0];
   const item={}; headers.forEach((h,i)=>item[h]=values[i]);
   const status=normalizeLeadStatus_(item.status);
+  const type=String(item.type||'').trim().toLowerCase();
   const email=String(item.email||'').trim();
   if(email.indexOf('@')<0) return;
   const p=parseJson_(item.payload,{});
   const name=String(item.name||p['Jméno a příjmení']||p['Jméno objednatele']||p['Kontaktní osoba']||p['Jméno']||'');
   if(status==='confirmed' && !String(item.confirmedEmailSentAt||'').trim()){
-    sendPublicEmail_({to:email,subject:confirmedSubject_(item.type),body:confirmedBody_(item.type,name,p,item)});
+    sendPublicEmail_({to:email,subject:confirmedSubject_(type),body:confirmedBody_(type,name,p,item)});
     setLeadCell_(sh,row,headers,'confirmedEmailSentAt',new Date().toISOString());
   }
   if(status==='paid' && !String(item.paidEmailSentAt||'').trim()){
-    const accessCode=item.type==='rezervace' ? ensureReservationAccessCode_(item,p,row) : (item.type==='poukaz' ? ensureVoucherAccessCode_(item,p,row) : '');
-    const voucher=item.type==='poukaz' ? ensureVoucherForLead_(item,p,row,accessCode) : {code:'',validUntil:'',accessCode:''};
-    if(item.type==='poukaz'){
+    const accessCode=type==='rezervace' ? ensureReservationAccessCode_(item,p,row) : (type==='poukaz' ? ensureVoucherAccessCode_(item,p,row) : '');
+    const voucher=type==='poukaz' ? ensureVoucherForLead_(item,p,row,accessCode) : {code:'',validUntil:'',accessCode:''};
+    if(type==='poukaz'){
       setLeadCell_(sh,row,headers,'voucherCode',voucher.code);
       setLeadCell_(sh,row,headers,'voucherValidUntil',voucher.validUntil);
       setLeadCell_(sh,row,headers,'accessCode',accessCode);
       setLeadCell_(sh,row,headers,'accessCodeCreatedAt',new Date().toISOString());
     }
-    if(item.type==='rezervace'){
+    if(type==='rezervace'){
       setLeadCell_(sh,row,headers,'accessCode',accessCode);
       setLeadCell_(sh,row,headers,'accessCodeCreatedAt',new Date().toISOString());
     }
-    sendPublicEmail_({to:email,subject:paidSubject_(item.type),body:paidBody_(item.type,name,p,item,voucher.code,accessCode)});
+    sendPublicEmail_({to:email,subject:paidSubject_(type),body:paidBody_(type,name,p,item,voucher.code,accessCode)});
     setLeadCell_(sh,row,headers,'paidEmailSentAt',new Date().toISOString());
   }
 }
