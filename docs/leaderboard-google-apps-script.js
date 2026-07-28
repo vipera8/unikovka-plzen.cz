@@ -19,10 +19,10 @@ const HEADERS = {
   secretImages: ['fileName','driveFileId','mimeType','notes'],
   teams: ['id','team','accessCode','variant','currentStation','stationTitle','startTime','updatedAt','finished','finishTime','hints','solutions','wrong','wrongTotal','completed','lastPos','startTimeCz','updatedAtCz','finishTimeCz'],
   events: ['time','timeCz','teamId','team','accessCode','variant','type','eventName','station','stationTitle','hint','value','detail'],
-  leaderboard: ['id','team','total','hints','solutions','title','date','dateCz','variant']
+  leaderboard: ['id','team','total','totalTimeCz','hints','solutions','title','date','dateCz','variant']
 };
 
-function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Zpracovat zaplacene objednavky','processPaidLeadsManual').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
+function onOpen(){ SpreadsheetApp.getUi().createMenu('Hrava Plzen').addItem('Pripravit tabulky','setupSheets').addItem('Nastavit rozbalovaci status a ceny','setupLeadDropdowns').addItem('Zpracovat zaplacene objednavky','processPaidLeadsManual').addItem('Obnovit prehled pristupovych kodu','refreshAccessCodeOverview').addItem('Obnovit citelne casy zebricku','refreshLeaderboardTimes').addItem('Vygenerovat voucherovy kod','generateVoucherManual').addItem('Nainstalovat automaticke e-maily','installLeadStatusTrigger').addItem('Vygenerovat 10 kodu - delsi varianta','generateTenLongCodes').addItem('Vygenerovat 10 kodu - kratka varianta','generateTenShortCodes').addToUi(); }
 function setupSheets(){ Object.keys(SHEETS).forEach(k=>getSheet_(SHEETS[k], HEADERS[k])); setupLeadDropdowns_(); setupAccessCodeDropdowns_(); }
 function setupAccessCodeDropdowns_(){
   const sh=getSheet_(SHEETS.accessCodes, HEADERS.accessCodes);
@@ -130,6 +130,21 @@ function processPaidLeadsManual(){
   const message='Zpracovano: '+processed+'\nPreskoceno: '+skipped+(errors.length?'\n\nChyby:\n'+errors.join('\n'):'');
   try{ SpreadsheetApp.getUi().alert(message); }catch(e){ Logger.log(message); }
 }
+function refreshLeaderboardTimes(){
+  setupSheets();
+  const sh=getSheet_(SHEETS.leaderboard, HEADERS.leaderboard);
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  const totalCol=headers.indexOf('total')+1;
+  const totalTimeCol=headers.indexOf('totalTimeCz')+1;
+  if(totalCol<1 || totalTimeCol<1) return;
+  const lastRow=sh.getLastRow();
+  if(lastRow<2) return;
+  const totals=sh.getRange(2,totalCol,lastRow-1,1).getValues();
+  const values=totals.map(row=>[durationTimeCz_(row[0])]);
+  sh.getRange(2,totalTimeCol,values.length,1).setValues(values);
+  SpreadsheetApp.flush();
+  try{ SpreadsheetApp.getUi().alert('Citelne casy zebricku byly obnoveny.'); }catch(e){}
+}
 function generateTenFreeCodes(){ generateTenLongCodes(); }
 function generateTenLongCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'delsi varianta',variant:'long'}); SpreadsheetApp.getUi().alert('Vygenerovane kody pro delsi variantu:\n'+codes.join('\n')); }
 function generateTenShortCodes(){ setupSheets(); const codes=createAccessCodes_({count:10,status:'active',orderType:'kratka varianta',variant:'short'}); SpreadsheetApp.getUi().alert('Vygenerovane kody pro kratkou variantu:\n'+codes.join('\n')); }
@@ -228,6 +243,15 @@ function formatDateTimeCz_(value){
   const d=isNaN(n) ? new Date(String(value)) : new Date(n);
   if(isNaN(d.getTime())) return '';
   return Utilities.formatDate(d, 'Europe/Prague', 'dd.MM.yyyy HH:mm:ss');
+}
+function durationTimeCz_(value){
+  const ms=Number(value||0);
+  if(!ms || isNaN(ms) || ms<0) return '';
+  const seconds=Math.round(ms/1000);
+  const h=Math.floor(seconds/3600);
+  const m=Math.floor((seconds%3600)/60);
+  const s=seconds%60;
+  return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
 function accessCodeTimeValues_(values){
   const out=Object.assign({}, values || {});
@@ -432,11 +456,11 @@ function saveTeamState_(e){
   return json_({ok:true},e);
 }
 function saveEvent_(e){ const sh=getSheet_(SHEETS.events,HEADERS.events); const accessCode=normalize_(e.parameter.accessCode||''); const device=ensureActiveDevice_(accessCode,e); if(!device.ok) return json_(device,e); const time=String(e.parameter.time||new Date().toISOString()); const item={time,timeCz:formatDateTimeCz_(time),teamId:String(e.parameter.teamId||''),team:String(e.parameter.team||''),accessCode,variant:variantFromParam_(e.parameter),type:String(e.parameter.type||''),eventName:String(e.parameter.eventName||''),station:Number(e.parameter.station||1),stationTitle:String(e.parameter.stationTitle||''),hint:String(e.parameter.hint||''),value:String(e.parameter.value||''),detail:String(e.parameter.detail||'{}')}; const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); return json_({ok:true},e); }
-function addLeaderboard_(e){ const id=String(e.parameter.id||''); if(!id) return json_({ok:false,error:'missing id'},e); const sh=getSheet_(SHEETS.leaderboard,HEADERS.leaderboard); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const date=String(e.parameter.date||new Date().toISOString()); if(findRowById_(sh,id)<0){ const item={id,team:String(e.parameter.team||'Bez nazvu'),total:Number(e.parameter.total||0),hints:Number(e.parameter.hints||0),solutions:Number(e.parameter.solutions||0),title:String(e.parameter.title||''),date,dateCz:formatDateTimeCz_(date),variant:variantFromParam_(e.parameter)}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); } return json_({ok:true},e); }
+function addLeaderboard_(e){ const id=String(e.parameter.id||''); if(!id) return json_({ok:false,error:'missing id'},e); const sh=getSheet_(SHEETS.leaderboard,HEADERS.leaderboard); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const date=String(e.parameter.date||new Date().toISOString()); const total=Number(e.parameter.total||0); if(findRowById_(sh,id)<0){ const item={id,team:String(e.parameter.team||'Bez nazvu'),total,totalTimeCz:durationTimeCz_(total),hints:Number(e.parameter.hints||0),solutions:Number(e.parameter.solutions||0),title:String(e.parameter.title||''),date,dateCz:formatDateTimeCz_(date),variant:variantFromParam_(e.parameter)}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); } return json_({ok:true},e); }
 function restoreTeamByCode_(e){ const code=normalize_(e.parameter.accessCode||''); if(!accessCodeRecord_(code)) return json_({team:null},e); const rows=rows_(SHEETS.teams).filter(r=>normalize_(r.accessCode)===code).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))); return json_({team:rows[0]||null},e); }
 function adminData_(){ const allTeams=rows_(SHEETS.teams).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))); const teams=adminVisibleTeams_(allTeams); const visibleIds={}; teams.forEach(t=>visibleIds[String(t.id||'')]=true); const events=rows_(SHEETS.events).filter(e=>!e.teamId || visibleIds[String(e.teamId||'')]).slice(-200); return {ok:true,teams,events,leaderboard:leaderboardRows_(),accessCodes:rows_(SHEETS.accessCodes),leads:rows_(SHEETS.leads).slice(-100)}; }
 function adminVisibleTeams_(teams){ const cutoff=Date.now()-FINISHED_TEAM_ADMIN_VISIBLE_MS; return teams.filter(t=>{ const finished=String(t.finished||'0')==='1' || t.finished===true; if(!finished) return true; const finish=Number(t.finishTime||0); return !finish || finish>=cutoff; }); }
-function leaderboardRows_(wantedVariant){ const wanted=String(wantedVariant||'').toLowerCase(); return rows_(SHEETS.leaderboard).filter(r=>r.id).map(r=>({id:String(r.id),team:String(r.team||'Bez nazvu'),total:Number(r.total||0),hints:Number(r.hints||0),solutions:Number(r.solutions||0),title:String(r.title||''),date:String(r.date||''),dateCz:String(r.dateCz||''),variant:String(r.variant||'long')})).filter(r=>!wanted || r.variant===wanted).sort((a,b)=>a.total-b.total).slice(0,50); }
+function leaderboardRows_(wantedVariant){ const wanted=String(wantedVariant||'').toLowerCase(); return rows_(SHEETS.leaderboard).filter(r=>r.id).map(r=>({id:String(r.id),team:String(r.team||'Bez nazvu'),total:Number(r.total||0),totalTimeCz:String(r.totalTimeCz||durationTimeCz_(r.total)),hints:Number(r.hints||0),solutions:Number(r.solutions||0),title:String(r.title||''),date:String(r.date||''),dateCz:String(r.dateCz||''),variant:String(r.variant||'long')})).filter(r=>!wanted || r.variant===wanted).sort((a,b)=>a.total-b.total).slice(0,50); }
 function sendReviewEmailIfNeeded_(accessCode, teamName, variant){
   if(!accessCode) return;
   const rec=accessCodeRecord_(accessCode);
