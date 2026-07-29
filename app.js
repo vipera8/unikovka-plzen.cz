@@ -628,7 +628,8 @@ function renderStationSpecial(st,s,hintState){
  }
  let intro = stationIntroForVariant(st, variantForState(s));
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
- return `${stationImage(st, false)}${introPanel(st, false, intro)}${st.id===5?`<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>`:''}<div class="accordion"><button class="acc-head" onclick="toggleAcc(this); markMore(${st.id})">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>${renderHints(st,hintState)}`;
+ const lockHelp = directionalLockHelpHtml(st, variantForState(s));
+ return `${stationImage(st, false)}${introPanel(st, false, intro)}${lockHelp}${st.id===5?`<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>`:''}<div class="accordion"><button class="acc-head" onclick="toggleAcc(this); markMore(${st.id})">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>${renderHints(st,hintState)}`;
 }
 function diaryKeyHint(){
  return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Nemůžete najít klíč? <span>⌄</span></button><div class="acc-body">${ptxt('Klíč je schovaný uvnitř batohu. Prohledejte pečlivě místo, kde byl uložený deník. Některé části batohu drží na suchý zip a mohou skrývat víc, než se na první pohled zdá.')}</div></div>`;
@@ -668,6 +669,10 @@ function introPanel(st, firstScreen=false, intro='', opened=false, variant=varia
  const extraTitle = st.introImageTitle ? `<div class="intro-image-title">${escapeHtml(st.introImageTitle)}</div>` : '';
  const extraImage = st.introImage ? `<figure class="intro-image-wrap"><img class="intro-inline-image" src="assets/images/${encodeURI(st.introImage)}" alt="${escapeHtml(st.introImageTitle || st.title)}" loading="lazy" onerror="this.closest('.intro-image-wrap').style.display='none'"></figure>` : '';
  return `<div class="accordion intro-accordion${opened?' open':''}"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
+}
+function directionalLockHelpHtml(st, variant=variantForState()){
+ if(variant!=='short' || Number(st?.id)!==13) return '';
+ return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Jak použít směrový zámek? <span>⌄</span></button><div class="acc-body">${ptxt('Než začnete zadávat směry, zámek vynulujte: dvakrát pevně stiskněte třmen zámku dolů do těla zámku a pusťte.\n\nPotom postupně zadejte směry. Každý směr posuňte až nadoraz a nechte tlačítko vrátit zpět doprostřed, teprve pak zadejte další směr.\n\nKdyž se spletete, nic se neděje. Zámek znovu dvakrát stiskněte dolů, tím ho vynulujete, a začněte celou sekvenci od začátku.\n\nPo zadání správné sekvence zatáhněte za třmen a zámek se otevře.')}</div></div>`;
 }
 function advanceIntroSequence(audio){
  const parts=(audio.dataset.sequence||'').split('|').filter(Boolean).map(decodeURIComponent);
@@ -1787,8 +1792,9 @@ async function adminPreviewStation(id=null){
  if(st.id===1 && intro.includes('Po odemčení:')) intro = intro.split('Po odemčení:').pop();
  const more = st.more ? `<div class="accordion open"><button class="acc-head" onclick="toggleAcc(this)">Chci vědět víc <span>⌄</span></button><div class="acc-body">${st.audio?`<audio controls preload="none" src="assets/audio/${encodeURI(st.audio)}"></audio>`:''}<div style="margin-top:10px">${ptxt(st.more)}</div></div></div>` : '';
  const jingleControl = id===5 ? `<button id="jingleBtn" class="btn secondary" style="margin-top:8px" onclick="toggleJingle()">Přehrát znělku</button>` : '';
+ const lockHelp = directionalLockHelpHtml(st, variant);
  const secretId=`adminPreviewSecrets-${id}`;
- const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true, variant)}${jingleControl}${more}<div id="${secretId}">${secretHtml}</div><div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
+ const shellHtml=(secretHtml)=>`<h2>Náhled zastávky ${stationLabel(id, variant)}</h2><h3>${escapeHtml(st.title)}</h3><p class="small muted">Tento náhled nemění rozehranou hru žádného týmu.</p><div class="grid two admin-actions"><button class="btn secondary" onclick="adminPreviewWrongCode(${id})">Test špatného kódu</button><button class="btn secondary" onclick="adminPreviewCorrectCode(${id})">Test správného kódu</button><button class="btn secondary" onclick="adminPreviewBeer(${id})">Test půllitru</button><button class="btn secondary" onclick="adminPreviewFinish()">Závěrečná stránka</button></div>${stationImage(st, false)}${introPanel(st, false, intro, true, variant)}${lockHelp}${jingleControl}${more}<div id="${secretId}">${secretHtml}</div><div class="admin-card"><p><b>Souřadnice:</b><br>${st.coords.lat}, ${st.coords.lng}</p></div><button class="btn ghost" onclick="openAdminPanel()">Zpět do adminu</button>`;
  const token=`${id}-${Date.now()}`;
  window._adminPreviewToken=token;
  const updatePreview=secretHtml=>{
