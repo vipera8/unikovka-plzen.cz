@@ -110,7 +110,7 @@ function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
 function stationIntroForVariant(st, variant=variantForState()){
  if(variant==='short' && Number(st?.id)===13){
-  return 'Servus! Tak jste to dokázali. Stojíte před Jubilejní bránou – vítězným obloukem, který tu Plzeňáci postavili v roce 1892 k padesátému výročí mého prvního ležáku. Podívejte se na ni, je to brána do úplně jiného světa. Za těmi zdmi se pivo už skoro dvě stě let vaří, kvasí a zraje.\n\nTady končí vaše putování městem, už žádné další chození, žádné další zastávky, ale ta nejdůležitější práce vás teprve čeká. Teď už nepůjde o hledání. Teď musíte správně použít všechno, co jste po cestě získali.\n\nNejprve otevřete to, co zůstalo zavřené. Teprve potom pochopíte zbytek.';
+  return 'Servus! Tak jste to dokázali. Stojíte před Jubilejní bránou – vítězným obloukem, který tu Plzeňáci postavili v roce 1892 k padesátému výročí mého prvního ležáku. Podívejte se na ni, je to brána do úplně jiného světa. Za těmi zdmi se pivo už skoro dvě stě let vaří, kvasí a zraje.\n\nTady končí vaše putování městem, už žádné další chození, žádné další zastávky, ale ta nejdůležitější práce vás teprve čeká. Teď už nepůjde o hledání. Teď musíte správně použít všechno, co jste po cestě získali.\n\nNejprve si vezměte všech 6 kartiček z jednotlivých zastávek a otevřete to, co zůstalo zavřené. Teprve potom využijte nasbírané lahvičky. Nezapomeňte se rozhlédnout kolem, abyste pochopili zbytek.';
  }
  return st?.intro || '';
 }
