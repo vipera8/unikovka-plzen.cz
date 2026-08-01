@@ -105,6 +105,18 @@ async function backendRequest(action, params={}){
  if(!url) throw new Error('Backend endpoint není nastaven.');
  return await loadJsonp(url);
 }
+const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/CtLxCKiijdocEJq_6bRE';
+function reportLeadConversion(type){
+ try{
+  if(typeof window.gtag !== 'function') return;
+  window.gtag('event', 'conversion', {
+   send_to: GOOGLE_ADS_LEAD_CONVERSION,
+   value: 1.0,
+   currency: 'CZK',
+   form_type: type || 'form'
+  });
+ }catch(e){}
+}
 function stationHintCount(st){ if(variantForState()==='short' && Number(st?.id)===13) return 3; return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
 function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
@@ -520,6 +532,7 @@ async function submitLeadForm(e,type,message){
   const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), _:Date.now()});
   if(!data?.ok) throw new Error(data?.error || 'lead_failed');
   if(confirm) confirm.textContent=message;
+  reportLeadConversion(type);
   form.reset();
  }catch(err){
   if(confirm) confirm.textContent='Odeslání se nepodařilo. Zkuste to prosím znovu nebo nám napište e-mail.';
