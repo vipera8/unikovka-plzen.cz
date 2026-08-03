@@ -105,7 +105,7 @@ async function backendRequest(action, params={}){
  if(!url) throw new Error('Backend endpoint není nastaven.');
  return await loadJsonp(url);
 }
-const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/CtLxCKiijdocEJq_6bRE';
+const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/t2OTCNqgm9saEJq_6bRE';
 function reportLeadConversion(type){
  try{
   if(typeof window.gtag !== 'function') return;
