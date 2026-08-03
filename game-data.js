@@ -25,7 +25,7 @@
                          "image":  "01_Groll_nadrazi.jpg",
                          "introAudio":  "01_Hlavni_nadrazi_audio_Groll_uvod_1.mp3",
                          "image2":  "01_nadrazi_uvod_2.jpg",
-                         "introAudio2":  "01_Hlavni_nadrazi_audio_Groll_uvod_2_oprava_textu.mp3",
+                         "introAudio2":  "01_Hlavni_nadrazi_audio_Groll_uvod_2_oprava_textu_podruhe.mp3",
                          "hintCount":  3
                      },
                      {
@@ -43,7 +43,7 @@
                          "intro":  "Voda! Bez ní bychom v sudech měli jen prach a vy byste dneska měli v hrdle jako na Sahaře. Ale nebudeme tu jen tak lelkovat a krmit labutě. Máme práci!\n\nPostavte se na bílou značku, co je kousek za půlkou na té červené pravé lávce. Na zemi uvidíte bílý vyznačený obdélník. Přesně tam vás potřebuji mít. Tak a teď si z batohu vyndejte kompas z předchozí zastávky a můj deník. Nalistujte stránku s kresbami významných plzeňských staveb.\n\nNejprve je potřeba město správně přečíst. Najděte vyobrazené stavby, určete jejich směr a potom si pořádně prohlédněte jejich kresby v deníku. A věřte mi… některé stavby umějí prozradit víc, než se na první pohled zdá.",
                          "more":  "Tahle řeka, Radbuza, pramení až v Českém lese a v Plzni se potkává se svými třemi sestrami. Všimli jste si, jak je tu nábřeží široké a upravené? Kousek dál se mu říká Anglické nábřeží. To proto, že ho kdysi nechal plzeňský starosta upravit po vzoru Londýna. Chtěl mít z Plzně světové město, což se mu – hlavně díky mému pivu – podařilo!\n\nA pamatujte, není voda jako voda. Plzeňské pivo je světový unikát i díky tomu, že je zdejší voda neobyčejně měkká. Tvrdá voda je dobrá tak na praní fuseklí pro pradleny, ale na vaření pořádného ležáku potřebujete tuhle plzeňskou dobrotu. My ji sice nebereme přímo z řeky, ale z hlubokých artéských studní, ale bez téhle řeky by Plzeň nebyla Plzní.",
                          "image":  "02_Groll_radbuzska_naplavka.jpg",
-                         "introAudio":  "02_Radbuzska_naplavka_audio_Groll_uvod_1_oprava_textu.mp3",
+                         "introAudio":  "02_Radbuzska_naplavka_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "hintCount":  3
                      },
                      {
@@ -115,7 +115,7 @@
                          "intro":  "Servus! Tak tohle už je jiná liga, co? Ta budova před vámi není žádný drobek. Koukáte na Velkou synagogu – druhou největší v celé Evropě a jednu z největších na světě! V mých dobách se na ní nešetřilo. Jenže když ji stavěli, plzeňští radní se trochu vylekali. Museli ty věže dokonce o kus snížit, aby náhodou nebyly vyšší než věž katedrály na náměstí. I s tímhle ‚snížením‘ je to ale kolos, který vám vezme dech. Ale my tu nejsme jen na čumendu, historie tu na vás kouká z každého kamene a vy se do ní teď musíte pořádně ponořit.\n\nPřed vámi stojí dům znamení. V jeho horní části se nachází Davidova hvězda. Víte, z čeho se skládá? Ze dvou rovnostranných trojúhelníků. Přesně takové trojúhelníky máte z předchozí zastávky a na každém z nich jsou tři znamení.\n\nVšechna tato znamení se na synagoze nacházejí. Nejde tedy jen o to, co na budově najdete, ale hlavně kde to najdete. Sledujte, kam míří cípy jednotlivých trojúhelníků. Šest z nich odpovídá skutečnému rozmístění znamení na synagoze. Najděte ty pravé!",
                          "more":  "Víte, co je na téhle synagoze nejzajímavější? Že ji v podstatě zachránil šicí stroj. Za druhé světové války ji nacisté nezbořili jen proto, že se jim hodila jako obří skladiště zabaveného nábytku a taky jako krejčovská dílna, kde se šily uniformy. Kdyby stála o kousek dál od ostatních domů, nejspíš by ji vypálili, ale báli se, že by s ní lehla popelem i celá ulice. Takže to, že tu dneska stojí v celé své kráse, je vlastně malý zázrak.\n\nA všimněte si těch věží – ty cibulovité kopule vypadají spíš jako z pohádek tisíce a jedné noci než z Plzně, že? Architekt Max Fleischer tam namíchal novorománský styl s maurskými prvky, aby to mělo ten správný orientální šmrnc. Uvnitř je navíc taková akustika, že by tam i můj chraplák zněl jako andělský chór. Tak si ji pořádně prohlédněte, ale pak už se věnujte úkolu, ať se z téhle velkoleposti úplně nepomotáme!",
                          "image":  "06_Groll_velka_synagoga.jpg",
-                         "introAudio":  "06_Velka_Synagoga_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "06_Velka_Synagoga_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "hintCount":  3
                      },
                      {
@@ -133,7 +133,7 @@
                          "intro":  "Tak jsme v samém srdci Plzně. Rozhlédněte se kolem - ta věž nad vámi, to je katedrála svatého Bartoloměje. Se svými 102 metry je to nejvyšší kostelní věž v celém Česku! Skoro se z té výšky točí hlava, co?\n\nMy ale musíme zůstat nohama na zemi. Najděte na obvodu katedrály mříž s mnoha andělíčky a postavte se přímo k ní.\n\nJednou jsem tam poseděl a zapíjel dlouhý den svým zlatým mokem. Než korbel ztěžkl a mysl se rozplula, zakreslil jsem si do deníku mříž onoho malého anděla. Jenže ruka vedená pivem nebývá nejspolehlivější... Nalistujte v deníku stránku s mříží a hledejte, kde se má paměť rozchází s pravdou.\n\nV deníku u mříže se nacházejí znamení, ne všechna vám ale ukážou cestu dál. Ta správná poznáte podle toho, že se u nich kresba mříže rozchází se skutečností. Až je odhalíte, vydejte se po jejich stopách kolem náměstí. Staré domy tu stále hrdě nesou svá jména. Z čísla popisného každého nalezeného domu si ponechte pouze číslici, která kráčí jako první.\n\nPořádně se dívejte, ať u toho andělíčka nevystojíte důlek!",
                          "more":  "Tahle katedrála je skutečný unikát. Stavěla se přes dvě stě let a ta věž, o které jsem mluvil, měří přesně 102,26 metru. Kdo chce vidět až na Šumavu, musí vyšlapat 301 schodů!\n\nA co ten andělíček pro štěstí na mříži? Traduje se, že když se ho dotknete a něco si přejete, do roka se vám to splní. Původně tam prý klečel odsouzenec na smrt a andělíček mu přinesl útěchu, dneska je z něj nejslavnější celebrita v Plzni – vidíte, jak je od těch tisíců dlaní vyleštěný?\n\nA nepřehlédněte ty tři zlaté kašny v rozích náměstí. Představují symboly z našeho městského znaku: Chrtici, Anděla a Velblouda. Toho velblouda Plzeňáci získali jako válečnou kořist od husitů, když je tu v 15. století obléhali. Prostě jsme jim ho sebrali a od té doby ho máme v erbu. Takoví my v Plzni jsme – co je dobré, to si podržíme!",
                          "image":  "07_Groll_namesti.jpg",
-                         "introAudio":  "07_Namesti_Republiky_audio_Groll_uvod_1_oprava_textu.mp3",
+                         "introAudio":  "07_Namesti_Republiky_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "hintCount":  3
                      },
                      {
@@ -169,7 +169,7 @@
                          "intro":  "Stojíte u Vodárenské věže. Tady se narodil můj drahý přítel Josef Škoda. Zatímco já zkoumal tajemství piva, on naslouchal tlukotu lidského srdce. Čas byl pro něj vším.\n\nPodívejte se na čas na hodinkách, které máte u sebe, a pozorně si prohlédněte dům jeho dětství. Hledejte, kde se čas potkává s čísly na domě. Čísla, ke kterým vás tato shoda dovede, vám napoví, kde v Grollově dopise najít důležité slovo.\n\nA nezapomeňte si všímat i znamení, která k Josefu Škodovi patří. Mohou vám napovědět, jak naložit s tím, co najdete dál.\n\nTahle šifra se skládá z několika kroků: čísla vás přivedou k dopisu, dopis ke slovu, slovo ke kolečku se symbolem a víčko hodinek k poslední úpravě výsledného slova.",
                          "more":  "Tady to páchne... tedy voní historií! Ta Vodárenská věž tu stojí od 16. století. Dřív pumpovala vodu do kašen na náměstí, aby měli lidé co pít, když zrovna došlo pivo – což se doufám stávalo jen zřídka. Všimněte si té renesanční brány, ta tu zbyla z původního opevnění.\n\nA co ten můj přítel Josef Škoda? Narodil se přímo tady, v rodině chudého řemeslníka. Vypracoval se až na osobního lékaře císařovny Sisi! Byl to on, kdo naučil doktory používat uši a poklepávat na hrudník, aby zjistili, co se v člověku děje. Možná proto jsme si tak rozuměli – on diagnostikoval srdce poklepem, já pivní sudy taky!\n\nHned vedle máte Masné krámy. Dneska je tam galerie, ale nenechte se zmást těmi obrazy. Dřív to byl ‚žaludek Plzně‘. Řezníci tam měli své pulty a díky chytrému systému větrání – v podstatě takovému středověkému průvanu – tam maso zůstávalo čerstvé i v největším parnu. Ta budova vypadá trochu jako malá pevnost s cimbuřím, že? No, maso se v Plzni vždycky bralo vážně!",
                          "image":  "09_Groll_vodarenska_vez.jpg",
-                         "introAudio":  "09_Vodarenska_vez_a_masne_kramy_audio_Groll_uvod_1_oprava_textu.mp3",
+                         "introAudio":  "09_Vodarenska_vez_a_masne_kramy_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "hintCount":  3
                      },
                      {
@@ -223,7 +223,7 @@
                          "intro":  "Tak jsme v parku Štruncovy sady... Sport a pivo, to k Plzni sedí jako zátka do lahve, nemyslíte? Stojíte kousek od fotbalového stadionu, kde se bojuje o góly, ale my teď hrajeme mnohem vyšší ligu.\n\nNedaleko odtud máte soutok dvou řek – Mže a Radbuzy. Od tohoto místa dál už je to Berounka. Berte to jako symbol: všechny vaše dosavadní směry se na další zastávce musí spojit v jeden proud.\n\nK dalšímu postupu budete teď nutně potřebovat dřevěné dílky, které jste získali na předchozí zastávce. Nejprve složte rozbitou pečeť města Plzně. Pak na dílcích hledejte další stopu, která vás navede ke kódu k zámku. Pořadí číslic vám pomůže určit naučná tabule s nápisem „Pivovar“. A pamatujte – kdo nedává pozor na detaily, ten se v mém receptu utopí!",
                          "more":  "Čtyři řeky! To není jen tak nějaké tlachání, to je v celém českém království naprostý unikát. Mže, Radbuza, Úhlava a Úslava. Všechny se tu v plzeňské pánvi potkávají, aby nakonec kousek odtud, pod Štruncovými sady, vytvořily řeku pátou – Berounku.\n\nMožná si říkáte: ‚No a co, Grolle, prostě hodně vody.‘ Ale kdepak! Pro mě jako sládka je tohle tekuté požehnání. Právě tahle plzeňská voda, která je neuvěřitelně měkká, dovolila mému ležáku získat tu nádhernou zlatou barvu a jemnou chuť. Kdyby tu tekla tvrdá voda jako jinde, pili byste dneska jen tmavou břečku a já bych teď nebyl legenda.\n\nPlzeň je zkrátka taková vodní křižovatka. Říká se, že město má tvar ruky a ty řeky jsou jako prsty, co se spojují v jednu pevnou dlaň. Bez těchhle čtyř řek by Plzeň nebyla Plzní a pivo by bylo jen... no, voda se sladem.",
                          "image":  "12_Groll_struncovy_sady.jpg",
-                         "introAudio":  "12_Struncovy_sady_audio_Groll_uvod_1.mp3",
+                         "introAudio":  "12_Struncovy_sady_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "introImageTitle":  "Umístění naučné tabule „Pivovar“",
                          "introImage":  "12_struncovy_sady_umisteni_pivovar.jpg",
                          "hintCount":  3
@@ -245,7 +245,7 @@
                          "image":  "13_Groll_pivovar.jpg",
                          "introAudio":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1.mp3",
                          "introAudioLong":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1_oprava_textu_dlouha_varianta.mp3",
-                         "introAudioShort":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1.mp3",
+                         "introAudioShort":  "13_Pivovar_Prazdroj_audio_Groll_uvod_1_oprava_textu_podruhe.mp3",
                          "hintCount":  4
                      }
                  ],
