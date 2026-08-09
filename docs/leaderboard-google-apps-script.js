@@ -378,6 +378,8 @@ function adminStationData_(e){
 }
 function saveLead_(e){
   const sh=getSheet_(SHEETS.leads,HEADERS.leads); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const payloadText=String(e.parameter.payload||'{}'); const p=parseJson_(payloadText,{});
+  const spamCheck=leadSpamCheck_(e,p,payloadText);
+  if(!spamCheck.ok) return json_({ok:false,error:spamCheck.error||'spam'},e);
   const type=String(e.parameter.type||'kontakt'); const name=String(p['Jméno a příjmení']||p['Jméno objednatele']||p['Kontaktní osoba']||p['Jméno']||p['Název firmy']||'');
   const email=String(p['E-mail']||''), phone=String(p['Telefon']||'');
   const amountKc=inferLeadAmountKc_(type,p);
@@ -386,6 +388,20 @@ function saveLead_(e){
   if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) sendPublicEmail_({to:LEAD_NOTIFICATION_EMAIL,subject:'Únikovka Plzeň - '+type,body:leadInternalNotificationBody_(type,p,item)});
   if(email && email.indexOf('@')>-1) sendPublicEmail_({to:email,subject:leadCustomerSubject_(type),body:leadCustomerBody_(type,name,p,item)});
   return json_({ok:true},e);
+}
+function leadSpamCheck_(e,p,payloadText){
+  const param=e && e.parameter ? e.parameter : {};
+  if(String(param.website||param.homepage||p.website||p.homepage||'').trim()) return {ok:false,error:'spam_honeypot'};
+  const startedAt=Number(param.formStartedAt||0);
+  const age=Number(param.formAgeMs||0);
+  if(startedAt && age && age<1800) return {ok:false,error:'spam_too_fast'};
+  const type=String(param.type||'kontakt');
+  const email=String(p['E-mail']||'').trim();
+  const phone=String(p['Telefon']||'').trim();
+  if(['rezervace','poukaz','firma','kontakt'].indexOf(type)>=0 && email.indexOf('@')<0 && !phone) return {ok:false,error:'missing_contact'};
+  const links=String(payloadText||'').match(/https?:\/\//gi);
+  if(links && links.length>2) return {ok:false,error:'spam_links'};
+  return {ok:true};
 }
 function leadCustomerSubject_(type){
   if(type==='rezervace') return 'Grollova zlatá stopa - přijali jsme vaši rezervaci';

@@ -477,11 +477,12 @@ function webStep(n,title,text){return `<article class="step"><span>${n}</span><d
 function webAudience(title,text){return `<article class="audience"><h3>${title}</h3><p>${text}</p></article>`}
 function webFaq(q,a){return `<details><summary>${q}</summary><p>${a}</p></details>`}
 function webForm(type,title,fields,terms,msg){
+ const startedAt=Date.now();
  const inputs=fields.map(f=>{
   if(f==='Varianta hry') return `<label>${f}<select name="${f}" required><option value="">Vyberte variantu</option><option>Delší varianta – 13 zastávek, cca 4–5 hodin</option><option>Krátká varianta – 7 zastávek, cca 2–3 hodiny</option></select></label>`;
   return `<label>${f}<input name="${f}" ${f.includes('E-mail')?'type="email"':f.includes('termín')||f.includes('Termín')?'type="date"':f.includes('čas')||f.includes('Čas')?'type="time"':'type="text"'} ${f.includes('Poznámka')||f.includes('Zpráva')?'data-long="1"':''}></label>`;
  }).join('');
- return `<form class="web-form" onsubmit="submitLeadForm(event,'${type}','${msg.replace(/'/g,'&#039;')}')"><h3>${title}</h3><input class="hp-field" name="website" tabindex="-1" autocomplete="off">${inputs}<label class="check"><input type="checkbox" required> <span>Souhlasím se <a href="#/zasady-osobnich-udaju" onclick="event.stopPropagation()">zpracováním osobních údajů</a>.</span></label>${terms?`<label class="check"><input type="checkbox" required> <span>Souhlasím s <a href="#/obchodni-podminky" onclick="event.stopPropagation()">obchodními a storno podmínkami</a>.</span></label>`:''}<button class="web-cta" type="submit">Odeslat</button><p class="form-confirm" aria-live="polite"></p></form>`;
+ return `<form class="web-form" data-started-at="${startedAt}" onsubmit="submitLeadForm(event,'${type}','${msg.replace(/'/g,'&#039;')}')"><h3>${title}</h3><input class="hp-field" name="website" tabindex="-1" autocomplete="off"><input class="hp-field" name="homepage" tabindex="-1" autocomplete="off"><input type="hidden" name="formStartedAt" value="${startedAt}">${inputs}<label class="check"><input type="checkbox" required> <span>Souhlasím se <a href="#/zasady-osobnich-udaju" onclick="event.stopPropagation()">zpracováním osobních údajů</a>.</span></label>${terms?`<label class="check"><input type="checkbox" required> <span>Souhlasím s <a href="#/obchodni-podminky" onclick="event.stopPropagation()">obchodními a storno podmínkami</a>.</span></label>`:''}<button class="web-cta" type="submit">Odeslat</button><p class="form-confirm" aria-live="polite"></p></form>`;
 }
 function renderLegalShell(title,body){
  app.innerHTML = `<main class="web-page legal-page">
@@ -521,15 +522,27 @@ function renderTermsPage(){
 async function submitLeadForm(e,type,message){
  e.preventDefault();
  const form=e.currentTarget;
- if(form.website?.value) return;
+ const confirm=form.querySelector('.form-confirm');
+ if(form.website?.value || form.homepage?.value) return;
+ const startedAt=Number(form.dataset.startedAt || form.formStartedAt?.value || 0);
+ const formAgeMs=startedAt ? Date.now()-startedAt : 0;
+ if(startedAt && formAgeMs<2200){
+  if(confirm) confirm.textContent='Zkuste formulář odeslat ještě jednou za okamžik.';
+  return;
+ }
+ const lastSubmit=Number(sessionStorage.getItem('grollLeadLastSubmitAt')||0);
+ if(lastSubmit && Date.now()-lastSubmit<12000){
+  if(confirm) confirm.textContent='Formulář už se odesílá. Zkuste to prosím za chvíli.';
+  return;
+ }
  const fd=new FormData(form);
  const payload={};
- for(const [k,v] of fd.entries()){ if(k==='website') continue; if(String(v).trim()) payload[k]=String(v).trim(); }
+ for(const [k,v] of fd.entries()){ if(['website','homepage','formStartedAt'].includes(k)) continue; if(String(v).trim()) payload[k]=String(v).trim(); }
  const btn=form.querySelector('button[type="submit"]');
- const confirm=form.querySelector('.form-confirm');
  if(btn) btn.disabled=true;
  try{
-  const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), _:Date.now()});
+  sessionStorage.setItem('grollLeadLastSubmitAt', String(Date.now()));
+  const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), formStartedAt:String(startedAt||''), formAgeMs:String(formAgeMs||''), page:location.href, _:Date.now()});
   if(!data?.ok) throw new Error(data?.error || 'lead_failed');
   if(confirm) confirm.textContent=message;
   reportLeadConversion(type);
