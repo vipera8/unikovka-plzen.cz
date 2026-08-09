@@ -13,7 +13,7 @@ const SHEETS = {
 };
 const HEADERS = {
   accessCodes: ['accessCode','customerName','email','phone','orderType','variant','status','createdAt','assignedAt','notes','teamId','teamName','startedAt','lastUsedAt','reviewEmailSentAt','activeDeviceId','activeDeviceAt','createdAtCz','assignedAtCz','startedAtCz','lastUsedAtCz','reviewEmailSentAtCz','activeDeviceAtCz','gameStatus','currentStation','stationTitle','updatedAtCz','finishTimeCz'],
-  leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil','accessCode','accessCodeCreatedAt'],
+  leads: ['time','type','name','email','phone','payload','status','amountKc','confirmedEmailSentAt','paidEmailSentAt','voucherCode','voucherValidUntil','accessCode','accessCodeCreatedAt','trafficSource','trafficMedium','trafficCampaign','trafficTerm','trafficContent','gclid','gbraid','wbraid','referrer','landingPage','pageUrl'],
   vouchers: ['voucherCode','status','buyerName','buyerEmail','phone','amountKc','variant','createdAt','paidAt','validUntil','leadRow','usedAt','notes','accessCode'],
   secrets: ['stationId','title','unlockCode','hintsJson','solutionJson'],
   secretImages: ['fileName','driveFileId','mimeType','notes'],
@@ -378,16 +378,46 @@ function adminStationData_(e){
 }
 function saveLead_(e){
   const sh=getSheet_(SHEETS.leads,HEADERS.leads); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const payloadText=String(e.parameter.payload||'{}'); const p=parseJson_(payloadText,{});
+  const tracking=leadTracking_(e);
   const spamCheck=leadSpamCheck_(e,p,payloadText);
   if(!spamCheck.ok) return json_({ok:false,error:spamCheck.error||'spam'},e);
   const type=String(e.parameter.type||'kontakt'); const name=String(p['Jméno a příjmení']||p['Jméno objednatele']||p['Kontaktní osoba']||p['Jméno']||p['Název firmy']||'');
   const email=String(p['E-mail']||''), phone=String(p['Telefon']||'');
   const amountKc=inferLeadAmountKc_(type,p);
   const initialStatus=type==='poukaz' ? 'čeká na platbu' : 'nové';
-  const item={time:czDateTime_(),type,name,email,phone,payload:payloadText,status:initialStatus,amountKc,confirmedEmailSentAt:type==='poukaz'?new Date().toISOString():'',paidEmailSentAt:'',voucherCode:'',voucherValidUntil:''}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:''));
+  const item={time:czDateTime_(),type,name,email,phone,payload:payloadText,status:initialStatus,amountKc,confirmedEmailSentAt:type==='poukaz'?new Date().toISOString():'',paidEmailSentAt:'',voucherCode:'',voucherValidUntil:'',accessCode:'',accessCodeCreatedAt:'',...tracking}; sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:''));
   if(LEAD_NOTIFICATION_EMAIL && LEAD_NOTIFICATION_EMAIL.indexOf('@')>-1) sendPublicEmail_({to:LEAD_NOTIFICATION_EMAIL,subject:'Únikovka Plzeň - '+type,body:leadInternalNotificationBody_(type,p,item)});
   if(email && email.indexOf('@')>-1) sendPublicEmail_({to:email,subject:leadCustomerSubject_(type),body:leadCustomerBody_(type,name,p,item)});
   return json_({ok:true},e);
+}
+function leadTracking_(e){
+  const param=e && e.parameter ? e.parameter : {};
+  const t=parseJson_(String(param.tracking||'{}'),{});
+  return {
+    trafficSource:String(t.source||inferTrafficSource_(t)).slice(0,250),
+    trafficMedium:String(t.medium||'').slice(0,250),
+    trafficCampaign:String(t.campaign||'').slice(0,250),
+    trafficTerm:String(t.term||'').slice(0,250),
+    trafficContent:String(t.content||'').slice(0,250),
+    gclid:String(t.gclid||'').slice(0,500),
+    gbraid:String(t.gbraid||'').slice(0,500),
+    wbraid:String(t.wbraid||'').slice(0,500),
+    referrer:String(t.referrer||'').slice(0,1000),
+    landingPage:String(t.landingPage||'').slice(0,1000),
+    pageUrl:String(t.pageUrl||param.page||'').slice(0,1000)
+  };
+}
+function inferTrafficSource_(t){
+  if(t.gclid || t.gbraid || t.wbraid) return 'google_ads';
+  if(t.utm_source) return String(t.utm_source).toLowerCase();
+  const ref=String(t.referrer||'').toLowerCase();
+  if(!ref) return 'direct';
+  if(ref.indexOf('google.')>-1) return 'google_organic';
+  if(ref.indexOf('seznam.')>-1) return 'seznam';
+  if(ref.indexOf('facebook.')>-1 || ref.indexOf('fb.')>-1) return 'facebook';
+  if(ref.indexOf('instagram.')>-1) return 'instagram';
+  const m=ref.match(/^https?:\/\/([^\/]+)/);
+  return m && m[1] ? m[1].replace(/^www\./,'') : 'referral';
 }
 function leadSpamCheck_(e,p,payloadText){
   const param=e && e.parameter ? e.parameter : {};

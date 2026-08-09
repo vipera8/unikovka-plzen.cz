@@ -7,6 +7,7 @@ const ACCESS_CODE_KEY = 'grollovaCestaAccessCode.v1';
 const GAME_VARIANT_KEY = 'grollovaCestaVariant.v1';
 const ADMIN_PREVIEW_VARIANT_KEY = 'grollovaCestaAdminPreviewVariant.v1';
 const DEVICE_ID_KEY = 'grollovaCestaDeviceId.v1';
+const TRACKING_KEY = 'grollovaCestaTrafficSource.v1';
 const DEVICE_CHECK_MS = 15000;
 const SHORT_VARIANT_STATIONS = [1,2,4,6,7,9,13];
 const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
@@ -105,7 +106,61 @@ async function backendRequest(action, params={}){
  if(!url) throw new Error('Backend endpoint není nastaven.');
  return await loadJsonp(url);
 }
-const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/t2OTCNqgm9saEJq_6bRE';
+const TRACKING_PARAMS = ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+function cleanTrackingValue(value){
+ return String(value || '').trim().slice(0, 500);
+}
+function captureTrackingData(){
+ const stored=readJson(TRACKING_KEY, {});
+ const url=new URL(location.href);
+ const nowIso=new Date().toISOString();
+ const data={...stored};
+ if(!data.firstSeenAt) data.firstSeenAt=nowIso;
+ if(!data.landingPage) data.landingPage=location.href;
+ TRACKING_PARAMS.forEach(key=>{
+  const value=cleanTrackingValue(url.searchParams.get(key));
+  if(value) data[key]=value;
+ });
+ if(document.referrer && !data.referrer) data.referrer=cleanTrackingValue(document.referrer);
+ data.pageUrl=location.href;
+ data.lastSeenAt=nowIso;
+ localStorage.setItem(TRACKING_KEY, JSON.stringify(data));
+ return data;
+}
+function inferTrafficSource(tracking){
+ if(tracking.gclid || tracking.gbraid || tracking.wbraid) return 'google_ads';
+ if(tracking.utm_source) return cleanTrackingValue(tracking.utm_source).toLowerCase();
+ const ref=cleanTrackingValue(tracking.referrer);
+ if(!ref) return 'direct';
+ try{
+  const host=new URL(ref).hostname.replace(/^www\./,'').toLowerCase();
+  if(host.includes('google.')) return 'google_organic';
+  if(host.includes('seznam.')) return 'seznam';
+  if(host.includes('facebook.') || host.includes('fb.')) return 'facebook';
+  if(host.includes('instagram.')) return 'instagram';
+  return host;
+ }catch(e){
+  return 'referral';
+ }
+}
+function leadTrackingData(){
+ const tracking=captureTrackingData();
+ return {
+  source: inferTrafficSource(tracking),
+  medium: cleanTrackingValue(tracking.utm_medium),
+  campaign: cleanTrackingValue(tracking.utm_campaign),
+  term: cleanTrackingValue(tracking.utm_term),
+  content: cleanTrackingValue(tracking.utm_content),
+  gclid: cleanTrackingValue(tracking.gclid),
+  gbraid: cleanTrackingValue(tracking.gbraid),
+  wbraid: cleanTrackingValue(tracking.wbraid),
+  referrer: cleanTrackingValue(tracking.referrer),
+  landingPage: cleanTrackingValue(tracking.landingPage),
+  pageUrl: cleanTrackingValue(location.href)
+ };
+}
+captureTrackingData();
+const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/CtLxCKiijdoCEJq_6bRE';
 function reportLeadConversion(type){
  try{
   if(typeof window.gtag !== 'function') return;
@@ -542,7 +597,7 @@ async function submitLeadForm(e,type,message){
  if(btn) btn.disabled=true;
  try{
   sessionStorage.setItem('grollLeadLastSubmitAt', String(Date.now()));
-  const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), formStartedAt:String(startedAt||''), formAgeMs:String(formAgeMs||''), page:location.href, _:Date.now()});
+  const data=await backendRequest('lead', {type, payload:JSON.stringify(payload), tracking:JSON.stringify(leadTrackingData()), formStartedAt:String(startedAt||''), formAgeMs:String(formAgeMs||''), page:location.href, _:Date.now()});
   if(!data?.ok) throw new Error(data?.error || 'lead_failed');
   if(confirm) confirm.textContent=message;
   reportLeadConversion(type);
