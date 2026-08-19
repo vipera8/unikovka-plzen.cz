@@ -175,6 +175,9 @@ function reportLeadConversion(type){
 function stationHintCount(st){ if(variantForState()==='short' && Number(st?.id)===13) return 3; return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
 function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
+const SHORT_FINAL_USE_DIRECTION_LOCK = false;
+const SHORT_FINAL_DIRECTION_LOCK_HINT_1 = 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Směry zadejte do směrového zámku v pořadí, v jakém jste zastávky navštívili.';
+const SHORT_FINAL_DIRECTION_LOCK_HELP = 'Než začnete zadávat směry, zámek vynulujte: dvakrát pevně stiskněte třmen zámku dolů do těla zámku a pusťte.\n\nPotom postupně zadejte směry. Každý směr posuňte až nadoraz a nechte tlačítko vrátit zpět doprostřed, teprve pak zadejte další směr.\n\nKdyž se spletete, nic se neděje. Zámek znovu dvakrát stiskněte dolů, tím ho vynulujete, a začněte celou sekvenci od začátku.\n\nPo zadání správné sekvence zatáhněte za třmen a zámek se otevře.';
 function stationIntroForVariant(st, variant=variantForState()){
  if(variant==='short' && Number(st?.id)===13){
   return 'Servus! Tak jste to dokázali. Stojíte před Jubilejní bránou – vítězným obloukem, který tu Plzeňáci postavili v roce 1892 k padesátému výročí mého prvního ležáku. Podívejte se na ni, je to brána do úplně jiného světa. Za těmi zdmi se pivo už skoro dvě stě let vaří, kvasí a zraje.\n\nTady končí vaše putování městem, už žádné další chození, žádné další zastávky, ale ta nejdůležitější práce vás teprve čeká. Teď už nepůjde o hledání. Teď musíte správně použít všechno, co jste po cestě získali.\n\nNejprve si vezměte všech 6 kartiček z jednotlivých zastávek a otevřete to, co zůstalo zavřené. Teprve potom využijte nasbírané lahvičky. Nezapomeňte se rozhlédnout kolem, abyste pochopili zbytek.';
@@ -183,8 +186,8 @@ function stationIntroForVariant(st, variant=variantForState()){
 }
 function variantHintOverride(id, num, variant=variantForState()){
  if(variant!=='short' || Number(id)!==13) return null;
- if(Number(num)===1) return 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Směry zadejte do směrového zámku v pořadí, v jakém jste zastávky navštívili.';
- if(Number(num)===2) return 'Nyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!';
+ if(Number(num)===1) return SHORT_FINAL_USE_DIRECTION_LOCK ? SHORT_FINAL_DIRECTION_LOCK_HINT_1 : 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Kód k zámku získáte tak, že spočítáte, kolikrát se každý směr opakuje. Čísla zapište v pořadí, v jakém se dané směry poprvé objevily během hry.';
+ if(Number(num)===2) return SHORT_FINAL_USE_DIRECTION_LOCK ? 'Nyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!' : 'Kód k zámku je 312.\n\nNyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!';
  if(Number(num)===3) return 'Na víčkách lahviček jsou římské číslice. Správné pořadí hledejte na bráně nad sebou - v římských číslicích. Lahvičky seřaďte podle prvního výskytu římských číslic v nápisu: MDCCCXLII. Tím získáte správné pořadí písmen a výsledné slovo pro cryptex.';
  return null;
 }
@@ -752,8 +755,8 @@ function introPanel(st, firstScreen=false, intro='', opened=false, variant=varia
  return `<div class="accordion intro-accordion${opened?' open':''}"><button class="acc-head" onclick="toggleAcc(this); markIntro(${st.id})">Úvod a zadání <span>⌄</span></button><div class="acc-body">${audioPart}<div class="intro-transcript">${ptxt(intro)}</div>${extraTitle}${extraImage}</div></div>`;
 }
 function directionalLockHelpHtml(st, variant=variantForState()){
- if(variant!=='short' || Number(st?.id)!==13) return '';
- return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Jak použít směrový zámek? <span>⌄</span></button><div class="acc-body">${ptxt('Než začnete zadávat směry, zámek vynulujte: dvakrát pevně stiskněte třmen zámku dolů do těla zámku a pusťte.\n\nPotom postupně zadejte směry. Každý směr posuňte až nadoraz a nechte tlačítko vrátit zpět doprostřed, teprve pak zadejte další směr.\n\nKdyž se spletete, nic se neděje. Zámek znovu dvakrát stiskněte dolů, tím ho vynulujete, a začněte celou sekvenci od začátku.\n\nPo zadání správné sekvence zatáhněte za třmen a zámek se otevře.')}</div></div>`;
+ if(!SHORT_FINAL_USE_DIRECTION_LOCK || variant!=='short' || Number(st?.id)!==13) return '';
+ return `<div class="accordion"><button class="acc-head" onclick="toggleAcc(this)">Jak použít směrový zámek? <span>⌄</span></button><div class="acc-body">${ptxt(SHORT_FINAL_DIRECTION_LOCK_HELP)}</div></div>`;
 }
 function advanceIntroSequence(audio){
  const parts=(audio.dataset.sequence||'').split('|').filter(Boolean).map(decodeURIComponent);
