@@ -1783,7 +1783,7 @@ async function loadOnlineAdmin(){
   const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
   const events=Array.isArray(data?.events) ? data.events : (Array.isArray(data?.rows?.events) ? data.rows.events : []);
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
-  panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí podle týmů</h3>${onlineEventsHtml(events, teams)}<button class="btn ghost admin-export" style="margin-top:10px" onclick="loadOnlineAdmin()">Obnovit</button>`;
+  panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí podle týmů</h3><button class="btn ghost admin-export" style="margin-bottom:10px" onclick="loadOnlineAdmin()">Obnovit</button>${onlineEventsHtml(events, teams)}`;
  }catch(e){
   console.error(e);
   const detail=escapeHtml(e?.message || 'Neznámá chyba načtení.');
