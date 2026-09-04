@@ -1554,10 +1554,10 @@ function adminDate(iso){
   return new Date(iso).toLocaleString('cs-CZ', {day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
  }catch(e){ return '—'; }
 }
-function adminStationLabel(id){
+function adminStationLabel(id, variant=variantForState()){
  const n=Number(id);
  const st=station(n);
- return st ? `${stationLabel(st.id)} – ${st.title}` : String(id || '—');
+ return st ? `${stationLabel(st.id, variant)} – ${st.title}` : String(id || '—');
 }
 function adminRows(){
  const rows=adminLog();
@@ -1743,13 +1743,17 @@ function onlineEventsHtml(events, teams=[]){
  const groups=new Map();
  for(const team of teams){
   const key=String(team.accessCode || team.id || team.team || 'bez-kodu');
-  groups.set(key, {label:`${team.team || 'Bez názvu'} (${team.accessCode || 'bez kódu'})`, events:[]});
+  const variant=String(team.variant || inferVariantFromCode(team.accessCode || '', team.orderType || '') || 'long');
+  groups.set(key, {label:`${team.team || 'Bez názvu'} (${team.accessCode || 'bez kódu'})`, variant, events:[]});
  }
  for(const e of events || []){
   const detail=safeJson(e.detail, {});
   const key=String(e.accessCode || detail.accessCode || e.teamId || detail.teamId || e.team || detail.team || 'bez-kodu');
-  if(!groups.has(key)) groups.set(key, {label:`${e.team || detail.team || 'Bez názvu'} (${e.accessCode || detail.accessCode || 'bez kódu'})`, events:[]});
-  groups.get(key).events.push({...e, detail});
+  const variant=String(e.variant || detail.variant || inferVariantFromCode(e.accessCode || detail.accessCode || '', e.orderType || detail.orderType || '') || 'long');
+  if(!groups.has(key)) groups.set(key, {label:`${e.team || detail.team || 'Bez názvu'} (${e.accessCode || detail.accessCode || 'bez kódu'})`, variant, events:[]});
+  const group=groups.get(key);
+  if((!group.variant || group.variant==='long') && variant==='short') group.variant=variant;
+  group.events.push({...e, detail});
  }
  if(!groups.size) return '<p class="small muted">Zatím nejsou online události.</p>';
  return [...groups.values()].map(group=>{
@@ -1760,7 +1764,8 @@ function onlineEventsHtml(events, teams=[]){
     const detail=e.detail || {};
     const type=detail.type || e.type || 'Událost';
     const stationNo=detail.station || e.station || '';
-    return `<tr><td>${adminDate(e.time)}</td><td>${escapeHtml(adminEventName({type, hint:detail.hint}))}</td><td>${stationNo ? adminStationLabel(stationNo) : '—'}</td></tr>`;
+    const variant=String(e.variant || detail.variant || group.variant || 'long');
+    return `<tr><td>${adminDate(e.time)}</td><td>${escapeHtml(adminEventName({type, hint:detail.hint}))}</td><td>${stationNo ? adminStationLabel(stationNo, variant) : '—'}</td></tr>`;
    }).join('');
   const body=rows
    ? `<div style="overflow:auto"><table class="admin-table"><tr><th>Čas</th><th>Událost</th><th>Zastávka</th></tr>${rows}</table></div>`
