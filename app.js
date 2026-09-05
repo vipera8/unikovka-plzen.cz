@@ -32,7 +32,20 @@ function stateKeyForCode(code){ return code ? `${LS_KEY}.${normalize(code)}` : L
 const getState = () => activeAccessCode() ? readJson(stateKeyForCode(activeAccessCode()), null) : readJson(LS_KEY, null);
 const saveState = s => { if(s?.variant){ sessionStorage.setItem(GAME_VARIANT_KEY, s.variant); localStorage.setItem(GAME_VARIANT_KEY, s.variant); } const key=stateKeyForCode(s?.accessCode || activeAccessCode()); localStorage.setItem(key, JSON.stringify(s)); localStorage.setItem(LS_KEY, JSON.stringify(s)); window._state=s; syncTeamState(s); };
 const adminLog = () => readJson(ADMIN_KEY, []);
-const addLog = (type, payload={}) => { const s=getState(); const row={time:new Date().toISOString(), type, team:s?.team||'', station:s?.currentStation||1, ...payload}; const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s); };
+const EVENT_DEDUPE_MS = 1800;
+let lastLogSignature = '';
+let lastLogAt = 0;
+const addLog = (type, payload={}) => {
+ const s=getState();
+ const stationId=Number(payload.station || s?.currentStation || 1);
+ const row={time:new Date().toISOString(), type, team:s?.team||'', ...payload, station:stationId, stationTitle:payload.stationTitle || station(stationId)?.title || ''};
+ const signature=[row.type,row.station,row.hint||'',row.value||''].join('|');
+ const nowMs=Date.now();
+ if(signature===lastLogSignature && nowMs-lastLogAt<EVENT_DEDUPE_MS) return;
+ lastLogSignature=signature;
+ lastLogAt=nowMs;
+ const rows=adminLog(); rows.push(row); localStorage.setItem(ADMIN_KEY, JSON.stringify(rows)); sendMonitorEvent(row, s);
+};
 const toast = msg => { const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800); };
 const mapsUrl = st => `https://www.google.com/maps/dir/?api=1&destination=${st.coords.lat},${st.coords.lng}&travelmode=walking`;
 const station = id => DATA.stations[id-1];
@@ -1033,10 +1046,11 @@ async function openHint(id,num){
   if(!hintText(s,id,num)) toast('Načítám nápovědu...');
   const hint=await fetchHintText(id,num);
   const latest=getState();
+  const previousOpen=Number((latest.hints||{})[id]||0);
   latest.hintTexts={...(latest.hintTexts||{}),[id]:{...((latest.hintTexts||{})[id]||{}),[num]:hint}};
-  latest.hints[id]=Math.max(latest.hints[id]||0,num);
+  latest.hints[id]=Math.max(previousOpen,num);
   saveState(latest);
-  addLog('hint_opened',{hint:num});
+  if(previousOpen<num) addLog('hint_opened',{station:id,stationTitle:station(id)?.title||'',hint:num});
   const hintCount=stationHintCount(station(id));
   if(num<hintCount) fetchHintText(id,num+1).catch(()=>{});
   if(num>=hintCount) prefetchSolution(id);
@@ -1046,17 +1060,18 @@ async function openHint(id,num){
   toast('Nápovědu se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.');
  }
 }
-function revealSolution(id){ const s=getState(); s.hints[id]=stationHintCount(station(id)); saveState(s); addLog('solution_available'); returnToGame(); }
+function revealSolution(id){ const s=getState(); s.hints[id]=stationHintCount(station(id)); saveState(s); addLog('solution_available',{station:id,stationTitle:station(id)?.title||''}); returnToGame(); }
 async function openSolution(id, btn){
  const s=getState();
  try{
   if(!solutionText(s,id)) toast('Načítám řešení...');
   const solution=await fetchSolutionText(id);
   const latest=getState();
+  const alreadyOpen=!!((latest.solutions||{})[id]);
   latest.solutionTexts={...(latest.solutionTexts||{}),[id]:solution};
   latest.solutions[id]=true;
   saveState(latest);
-  addLog('solution_opened');
+  if(!alreadyOpen) addLog('solution_opened',{station:id,stationTitle:station(id)?.title||''});
   returnToGame();
  }catch(e){
   if(e?.message==='device_in_use'){ handleDeviceTaken(); return; }
@@ -1084,9 +1099,9 @@ function playUnlockFx(){
 function markIntro(id){
  const s=getState();
  if(!s || s.finished || Number(s.currentStation)!==Number(id)) return;
- addLog('intro_opened',{station:id});
+ addLog('intro_opened',{station:id,stationTitle:station(id)?.title||''});
 }
-function markMore(id){ addLog('more_opened',{station:id}); }
+function markMore(id){ addLog('more_opened',{station:id,stationTitle:station(id)?.title||''}); }
 function toggleAcc(btn){ btn.closest('.accordion').classList.toggle('open'); }
 let jingleAudio = null;
 function getJingleAudio(){
@@ -1161,7 +1176,7 @@ async function checkCode(expectedStationId, btn){
   s.wrong[st.id]=(s.wrong[st.id]||0)+1;
   s.wrongTotal=(s.wrongTotal||0)+1;
   saveState(s);
-  addLog('wrong_code',{value:val,count:s.wrong[st.id],total:s.wrongTotal,stationTitle:st.title});
+ addLog('wrong_code',{station:st.id,stationTitle:st.title,value:val,count:s.wrong[st.id],total:s.wrongTotal});
   let msg=DATA.wrongMessages[Math.floor(Math.random()*DATA.wrongMessages.length)];
   if(s.wrong[st.id]===3) msg='Nechci vám do toho mluvit, ale možná by se hodila nápověda.';
   if(s.wrong[st.id]===5) msg='Tahle várka se začíná připalovat. Mrkněte raději na nápovědu, než z toho bude patok.';
@@ -1182,7 +1197,7 @@ async function completeStation(expectedStationId){
  const st=station(expectedId);
  const previousDone = s.completed.length;
  if(!s.completed.includes(st.id)) s.completed.push(st.id);
- addLog('station_completed');
+ addLog('station_completed',{station:st.id,stationTitle:st.title});
  playUnlockFx();
  const variant=variantForState(s);
  const isFinal = isFinalStationId(st.id, variant);
@@ -1758,8 +1773,9 @@ function onlineEventsHtml(events, teams=[]){
  if(!groups.size) return '<p class="small muted">Zatím nejsou online události.</p>';
  return [...groups.values()].map(group=>{
   const rows=group.events
-   .slice(-80)
-   .reverse()
+   .slice()
+   .sort((a,b)=>(Date.parse(b.time||'')||0)-(Date.parse(a.time||'')||0))
+   .slice(0,80)
    .map(e=>{
     const detail=e.detail || {};
     const type=detail.type || e.type || 'Událost';

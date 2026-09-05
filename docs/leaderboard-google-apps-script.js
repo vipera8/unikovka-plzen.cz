@@ -502,7 +502,40 @@ function saveTeamState_(e){
   if(String(e.parameter.finished||'0')==='1' && finishTime) sendReviewEmailIfNeeded_(accessCode, String(e.parameter.team||''), variant);
   return json_({ok:true},e);
 }
-function saveEvent_(e){ const sh=getSheet_(SHEETS.events,HEADERS.events); const accessCode=normalize_(e.parameter.accessCode||''); const device=ensureActiveDevice_(accessCode,e); if(!device.ok) return json_(device,e); const time=String(e.parameter.time||new Date().toISOString()); const item={time,timeCz:formatDateTimeCz_(time),teamId:String(e.parameter.teamId||''),team:String(e.parameter.team||''),accessCode,variant:variantFromParam_(e.parameter),type:String(e.parameter.type||''),eventName:String(e.parameter.eventName||''),station:Number(e.parameter.station||1),stationTitle:String(e.parameter.stationTitle||''),hint:String(e.parameter.hint||''),value:String(e.parameter.value||''),detail:String(e.parameter.detail||'{}')}; const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:'')); return json_({ok:true},e); }
+function saveEvent_(e){
+  const sh=getSheet_(SHEETS.events,HEADERS.events);
+  const accessCode=normalize_(e.parameter.accessCode||'');
+  const device=ensureActiveDevice_(accessCode,e);
+  if(!device.ok) return json_(device,e);
+  const time=String(e.parameter.time||new Date().toISOString());
+  const item={time,timeCz:formatDateTimeCz_(time),teamId:String(e.parameter.teamId||''),team:String(e.parameter.team||''),accessCode,variant:variantFromParam_(e.parameter),type:String(e.parameter.type||''),eventName:String(e.parameter.eventName||''),station:Number(e.parameter.station||1),stationTitle:String(e.parameter.stationTitle||''),hint:String(e.parameter.hint||''),value:String(e.parameter.value||''),detail:String(e.parameter.detail||'{}')};
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  if(isDuplicateRecentEvent_(sh,headers,item)) return json_({ok:true,duplicate:true},e);
+  sh.appendRow(headers.map(h=>item[h]!==undefined?item[h]:''));
+  return json_({ok:true},e);
+}
+function isDuplicateRecentEvent_(sh,headers,item){
+  const last=sh.getLastRow();
+  if(last<2) return false;
+  const start=Math.max(2,last-25);
+  const values=sh.getRange(start,1,last-start+1,headers.length).getValues();
+  const idx={};
+  headers.forEach((h,i)=>idx[h]=i);
+  const itemTime=Date.parse(item.time)||0;
+  for(let i=values.length-1;i>=0;i--){
+    const row=values[i];
+    const rowTime=Date.parse(String(row[idx.time]||''))||0;
+    if(itemTime && rowTime && Math.abs(itemTime-rowTime)>2200) continue;
+    if(normalize_(row[idx.accessCode])!==normalize_(item.accessCode)) continue;
+    if(String(row[idx.teamId]||'')!==String(item.teamId||'')) continue;
+    if(String(row[idx.type]||'')!==String(item.type||'')) continue;
+    if(Number(row[idx.station]||0)!==Number(item.station||0)) continue;
+    if(String(row[idx.hint]||'')!==String(item.hint||'')) continue;
+    if(String(row[idx.value]||'')!==String(item.value||'')) continue;
+    return true;
+  }
+  return false;
+}
 function addLeaderboard_(e){ const id=String(e.parameter.id||''); if(!id) return json_({ok:false,error:'missing id'},e); const sh=getSheet_(SHEETS.leaderboard,HEADERS.leaderboard); const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); const date=String(e.parameter.date||new Date().toISOString()); const total=Number(e.parameter.total||0); const item={id,team:String(e.parameter.team||'Bez nazvu'),total,totalTimeCz:durationTimeCz_(total),hints:Number(e.parameter.hints||0),solutions:Number(e.parameter.solutions||0),title:String(e.parameter.title||''),date,dateCz:formatDateTimeCz_(date),variant:variantFromParam_(e.parameter),accessCode:normalize_(e.parameter.accessCode||'')}; const row=leaderboardExistingRow_(sh,headers,item); const values=headers.map(h=>item[h]!==undefined?item[h]:''); if(row>0) sh.getRange(row,1,1,values.length).setValues([values]); else sh.appendRow(values); return json_({ok:true},e); }
 function restoreTeamByCode_(e){ const code=normalize_(e.parameter.accessCode||''); if(!accessCodeRecord_(code)) return json_({team:null},e); const rows=rows_(SHEETS.teams).filter(r=>normalize_(r.accessCode)===code).sort((a,b)=>teamRowRank_(b)-teamRowRank_(a)); return json_({team:rows[0]||null},e); }
 function adminData_(){ const allTeams=rows_(SHEETS.teams).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))); const teams=adminVisibleTeams_(allTeams); const visibleIds={}, visibleCodes={}; teams.forEach(t=>{ visibleIds[String(t.id||'')]=true; if(t.accessCode) visibleCodes[normalize_(t.accessCode)]=true; }); const events=rows_(SHEETS.events).filter(e=>!e.teamId || visibleIds[String(e.teamId||'')] || visibleCodes[normalize_(e.accessCode)]).slice(-200); return {ok:true,teams,events,leaderboard:leaderboardRows_(),accessCodes:rows_(SHEETS.accessCodes),leads:rows_(SHEETS.leads).slice(-100)}; }
