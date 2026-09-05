@@ -1968,6 +1968,7 @@ function buildLeaderboardEntry(){
  return {
   id:s.id || ('team-'+(s.team||'')+'-'+(s.startTime||now())),
   team:s.team || 'Bez názvu',
+  accessCode:s.accessCode || activeAccessCode() || '',
   variant,
   total,
   hints:hintCount,
