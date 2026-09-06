@@ -1393,12 +1393,19 @@ function voucherFormData(){
  const validUntil=($('#voucherValidUntil')?.value || voucherDefaultValidUntil()).trim();
  return {code, variant, validUntil};
 }
+function voucherVariantDisplayText(variant){
+ const raw=String(variant || '').trim();
+ const normalized=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ if(normalized.includes('krat') || normalized.includes('7')) return '7 zastávek · cca 2–3 hodiny hry';
+ if(normalized.includes('dels') || normalized.includes('13')) return '13 zastávek · cca 4–5 hodin hry';
+ return raw || '13 zastávek · cca 4–5 hodin hry';
+}
 function voucherTemplateHtml(data={}){
  const v={code:data.code || 'HP-V-8F3K2A', variant:data.variant || 'Delší varianta', validUntil:data.validUntil || voucherDefaultValidUntil()};
  return `<section class="voucher-template-preview" aria-label="Dárkový voucher" style="position:relative;width:min(100%,760px);aspect-ratio:${VOUCHER_TEMPLATE_SIZE.width} / ${VOUCHER_TEMPLATE_SIZE.height};margin:14px auto;overflow:hidden">
   <img src="${VOUCHER_TEMPLATE_SRC}" alt="Dárkový voucher Grollova zlatá stopa" style="display:block;width:100%;height:100%;object-fit:contain">
   <div id="voucherPreviewCode" class="cert-field" style="${voucherFieldStyle('code')}">${escapeHtml(v.code)}</div>
-  <div id="voucherPreviewVariant" class="cert-field" style="${voucherFieldStyle('variant')}">${escapeHtml(v.variant)}</div>
+  <div id="voucherPreviewVariant" class="cert-field" style="${voucherFieldStyle('variant')}">${escapeHtml(voucherVariantDisplayText(v.variant))}</div>
   <div id="voucherPreviewValidUntil" class="cert-field" style="${voucherFieldStyle('validUntil')}">${escapeHtml(v.validUntil)}</div>
  </section>`;
 }
@@ -1448,7 +1455,7 @@ async function createVoucherBlob(data=voucherFormData()){
   ctx.fillText(String(text || ''), x, f.y + f.h / 2);
  };
  draw('code', data.code);
- draw('variant', data.variant);
+ draw('variant', voucherVariantDisplayText(data.variant));
  draw('validUntil', data.validUntil);
  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob ? resolve(blob) : reject(new Error('Voucher export failed')), 'image/png'));
 }
