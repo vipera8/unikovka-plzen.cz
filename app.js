@@ -173,7 +173,7 @@ function leadTrackingData(){
  };
 }
 captureTrackingData();
-const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/CtLxCKiijdoCEJq_6bRE';
+const GOOGLE_ADS_LEAD_CONVERSION = 'AW-18364391322/CtLxCKiijdocEJq_6bRE';
 function reportLeadConversion(type){
  try{
   if(typeof window.gtag !== 'function') return;
