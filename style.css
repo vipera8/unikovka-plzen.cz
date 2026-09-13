@@ -1765,3 +1765,5 @@
 .app-shell.web-shell .web-form input:not([type="checkbox"]),
 .app-shell.web-shell .web-form select{width:100%;max-width:100%;min-width:0}
 .app-shell.web-shell .web-form input[type="checkbox"]{width:auto;max-width:none;min-width:0;flex:0 0 auto}
+
+.selfie-stage:not(.camera-ready) .selfie-capture-btn{display:none}

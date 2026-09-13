@@ -2117,6 +2117,8 @@ function openFacebookReviewTarget(url){
 }
 
 let selfieStream=null;
+let selfieCameraRequest=0;
+let selfieCameraStarting=false;
 let selfieLastBlob=null;
 let selfieMode='frame';
 let grollSelfieScale=1.34;
@@ -2130,6 +2132,11 @@ const SELFIE_CANVAS_SIZE={w:1448,h:1086};
 const GROLL_SELFIE_FRAME_SRC='assets/images/groll_selfie_frame_overlay.png';
 const GROLL_SELFIE_BASE={widthPct:.34,rightPct:-.012,bottomPct:-.012};
 function stopSelfieCamera(){
+ selfieCameraRequest++;
+ selfieCameraStarting=false;
+ const video=$('#selfieVideo');
+ if(video){ video.pause(); video.srcObject=null; }
+ $('#selfieStage')?.classList.remove('camera-ready');
  if(selfieStream){
   selfieStream.getTracks().forEach(t=>t.stop());
   selfieStream=null;
@@ -2166,7 +2173,7 @@ function openSelfieBooth(){
   </div>
   <p id="selfieStatus" class="small muted"></p><button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Zpět do hry</button>`, false);
  setSelfieMode('frame');
- setTimeout(startSelfieCamera, 50);
+ startSelfieCamera();
 }
 function setSelfieMode(mode){
  selfieMode=SELFIE_MODES[mode] ? mode : 'frame';
@@ -2204,37 +2211,58 @@ function updateGrollSelfiePreview(){
  frameEl.style.right=`${right}%`;
  frameEl.style.bottom=`${bottom}%`;
 }
+// Metadata alone does not mean that the camera has supplied a usable frame.
+function waitForSelfiePreview(video, request){
+ return new Promise((resolve,reject)=>{
+  let playing=false;
+  const finish=(error)=>{ clearInterval(poll); clearTimeout(timeout); error ? reject(error) : resolve(); };
+  const poll=setInterval(()=>{
+   if(request!==selfieCameraRequest || !video.isConnected) return finish(new Error('Camera cancelled'));
+   if(playing && !video.paused && video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0) finish();
+  },100);
+  const timeout=setTimeout(()=>finish(new Error('Camera preview timeout')),10000);
+  try{ Promise.resolve(video.play()).then(()=>{ playing=true; },finish); }
+  catch(error){ finish(error); }
+ });
+}
 async function startSelfieCamera(){
- const status=$('#selfieStatus');
- const video=$('#selfieVideo');
- const stage=$('#selfieStage');
- const startBtn=$('#selfieStartBtn');
+ const status=$('#selfieStatus'), video=$('#selfieVideo'), stage=$('#selfieStage'), startBtn=$('#selfieStartBtn');
+ if(!video || !stage || selfieCameraStarting) return;
  if(!navigator.mediaDevices?.getUserMedia){
-  if(status) status.textContent='Fotoaparát v tomto prohlížeči není dostupný.';
+  if(status) status.textContent='Fotoaparát není dostupný. Otevřete hru přímo v Safari nebo Chromu přes zabezpečenou adresu webu.';
   return;
  }
+ stopSelfieCamera();
+ const request=selfieCameraRequest;
+ selfieCameraStarting=true;
  try{
-  if(startBtn) startBtn.disabled=true;
-  if(status) status.textContent='Spouštím fotoaparát...';
-  stopSelfieCamera();
-  selfieStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-  if(video){
-   video.srcObject=selfieStream;
-   video.onloadedmetadata=()=>{
-    stage?.classList.add('camera-ready');
-   };
-   video.onplaying=()=>{
-    stage?.classList.add('camera-ready');
-   };
-   try{ await video.play(); }catch(err){}
-   stage?.classList.add('camera-ready');
-  }
+  if(startBtn){ startBtn.disabled=true; startBtn.style.display='inline-flex'; }
+  if(status) status.textContent='Spouštím fotoaparát. Pokud se prohlížeč zeptá, povolte přístup ke kameře.';
+  const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+  // The permission prompt can finish after the player has closed the booth.
+  if(request!==selfieCameraRequest || !video.isConnected){ stream.getTracks().forEach(t=>t.stop()); return; }
+  selfieStream=stream;
+  video.muted=true;
+  video.defaultMuted=true;
+  video.playsInline=true;
+  video.setAttribute('playsinline','');
+  video.setAttribute('webkit-playsinline','');
+  video.style.display='block';
+  video.srcObject=stream;
+  await waitForSelfiePreview(video,request);
+  if(request!==selfieCameraRequest || !video.isConnected) return;
+  stage.classList.add('camera-ready');
   if(startBtn) startBtn.style.display='none';
-  if(status) status.textContent='Fotoaparát je spuštěný. Fotka zůstane ve vašem telefonu, dokud ji sami nesdílíte nebo nestáhnete.';
+  if(status) status.textContent='Fotoaparát je připravený. Nastavte záběr a vyfoťte se.';
  }catch(e){
-  stage?.classList.remove('camera-ready');
+  if(request!==selfieCameraRequest || !video.isConnected) return;
+  stopSelfieCamera();
   if(startBtn){ startBtn.disabled=false; startBtn.style.display='inline-flex'; }
-  if(status) status.textContent='Fotoaparát se nepodařilo spustit. Klepněte na Spustit fotoaparát nebo zkontrolujte oprávnění prohlížeče.';
+  if(status) status.textContent=e.name==='NotAllowedError'
+   ? 'Prohlížeč nepovolil kameru nebo její přehrávání. Klepněte na Spustit fotoaparát. Pokud to nepomůže, povolte kameru v nastavení webu nebo otevřete hru přímo v Safari či Chromu.'
+   : 'Obraz z fotoaparátu se nepodařilo načíst. Zavřete jiné aplikace používající kameru a klepněte na Spustit fotoaparát.';
+ }finally{
+  if(request===selfieCameraRequest){ selfieCameraStarting=false; if(startBtn) startBtn.disabled=false; }
  }
 }
 function selfieVintageFilter(){
@@ -2242,7 +2270,7 @@ function selfieVintageFilter(){
 }
 async function captureGrollSelfie(){
  const video=$('#selfieVideo'), frameEl=$('#selfieFrame'), canvas=$('#selfieCanvas'), result=$('#selfieResult'), status=$('#selfieStatus'), captureBtn=$('#selfieCaptureBtn');
- if(!video || !canvas || !video.videoWidth){ if(status) status.textContent='Fotoaparát ještě není připravený.'; return; }
+ if(!video || !canvas || !$('#selfieStage')?.classList.contains('camera-ready') || video.paused || video.readyState<2 || !video.videoWidth){ if(status) status.textContent='Fotoaparát ještě není připravený.'; return; }
  const mode=SELFIE_MODES[selfieMode] || SELFIE_MODES.frame;
  const frame=await loadImage(mode.frame);
  canvas.width=selfieMode==='frame' ? (frame.naturalWidth || frame.width || SELFIE_CANVAS_SIZE.w) : SELFIE_CANVAS_SIZE.w;
@@ -2384,7 +2412,7 @@ function retakeGrollSelfie(){
  if(captureBtn) captureBtn.style.display='inline-flex';
  $('#selfieStage')?.classList.remove('captured');
  updateGrollSelfiePreview();
- if(status) status.textContent='Nastavte záběr a vyfoťte se znovu.';
+ startSelfieCamera();
 }
 function selfieFileName(){
  const s=getState();
