@@ -117,7 +117,11 @@ function backendUrl(action, params={}){
 async function backendRequest(action, params={}){
  const url=backendUrl(action, params);
  if(!url) throw new Error('Backend endpoint není nastaven.');
- return await loadJsonp(url);
+ try{
+  return await loadJson(url);
+ }catch(fetchError){
+  return await loadJsonp(url);
+ }
 }
 const TRACKING_PARAMS = ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
 function cleanTrackingValue(value){
@@ -299,6 +303,17 @@ function loadJsonp(url){
   script.src=full.toString();
  document.head.appendChild(script);
  });
+}
+async function loadJson(url){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  const response=await fetch(url,{method:'GET',cache:'no-store',signal:controller.signal});
+  if(!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.json();
+ }finally{
+  clearTimeout(timer);
+ }
 }
 function stateFromOnlineRow(row){
  if(!row?.id) return null;
@@ -2613,7 +2628,6 @@ let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ c
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 render();
-
 
 
 
