@@ -120,6 +120,7 @@ async function backendRequest(action, params={}){
  try{
   return await loadJson(url);
  }catch(fetchError){
+  if(fetchError?.name!=='TypeError' && fetchError?.name!=='AbortError') throw fetchError;
   return await loadJsonp(url);
  }
 }
@@ -310,7 +311,9 @@ async function loadJson(url){
  try{
   const response=await fetch(url,{method:'GET',cache:'no-store',signal:controller.signal});
   if(!response.ok) throw new Error(`HTTP ${response.status}`);
-  return await response.json();
+  const text=await response.text();
+  try{ return JSON.parse(text); }
+  catch(e){ throw new Error('Backend nevrátil JSON odpověď.'); }
  }finally{
   clearTimeout(timer);
  }
@@ -662,11 +665,16 @@ async function verifyAccessCode(takeover=false){
  try{
   result=await backendRequest('validateAccessCode', withDevice({accessCode:normalize(val), takeover:takeover?1:0, _:Date.now()}));
  }catch(e){
-  if(err){ err.textContent='Kód se nepodařilo ověřit. Zkontrolujte připojení k internetu a zkuste to znovu.'; err.style.display='block'; }
-  toast('Kód se nepodařilo ověřit. Zkuste to znovu.');
-  if(input) input.focus();
-  if(btn) btn.disabled=false;
-  return false;
+  try{
+   const probe=await backendRequest('deviceStatus', withDevice({accessCode:normalize(val), _:Date.now()}));
+   result=probe?.ok ? {ok:true,accessCode:normalize(val),variant:inferVariantFromCode(val)} : probe;
+  }catch(probeError){
+   if(err){ err.textContent='Kód se nepodařilo ověřit. Zkontrolujte připojení k internetu a zkuste to znovu.'; err.style.display='block'; }
+   toast('Kód se nepodařilo ověřit. Zkuste to znovu.');
+   if(input) input.focus();
+   if(btn) btn.disabled=false;
+   return false;
+  }
  }
  if(btn) btn.disabled=false;
  if(result?.error==='device_in_use'){
@@ -2628,6 +2636,5 @@ let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ c
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 render();
-
 
 
