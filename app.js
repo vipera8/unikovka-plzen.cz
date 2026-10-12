@@ -191,7 +191,7 @@ function reportLeadConversion(type){
  }catch(e){}
 }
 function stationHintCount(st){ if(variantForState()==='short' && Number(st?.id)===13) return 3; return Number(st?.hintCount ?? st?.hints?.length ?? 0); }
-function hintText(s,id,num){ return s?.hintTexts?.[id]?.[num] || ''; }
+function hintText(s,id,num){ return variantHintOverride(id,num,variantForState(s)) || s?.hintTexts?.[id]?.[num] || ''; }
 function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
 const SHORT_FINAL_USE_DIRECTION_LOCK = false;
 const SHORT_FINAL_DIRECTION_LOCK_HINT_1 = 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Směry zadejte do směrového zámku v pořadí, v jakém jste zastávky navštívili.';
@@ -2638,4 +2638,3 @@ let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ c
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 render();
-
