@@ -213,6 +213,11 @@ function variantHintOverride(id, num, variant=variantForState()){
 }
 function variantSolutionOverride(id, variant=variantForState()){ return null; }
 function adminVariantHints(id, hints=[], variant=variantForState()){
+ if(Number(id)===9){
+  const updated=[...hints];
+  updated[2]=WATER_TOWER_HINT_3;
+  return updated;
+ }
  if(variant!=='short' || Number(id)!==13) return hints;
  return [1,2,3].map(num=>variantHintOverride(id, num, variant));
 }
