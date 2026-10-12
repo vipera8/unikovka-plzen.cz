@@ -196,6 +196,7 @@ function solutionText(s,id){ return s?.solutionTexts?.[id] || ''; }
 const SHORT_FINAL_USE_DIRECTION_LOCK = false;
 const SHORT_FINAL_DIRECTION_LOCK_HINT_1 = 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Směry zadejte do směrového zámku v pořadí, v jakém jste zastávky navštívili.';
 const SHORT_FINAL_DIRECTION_LOCK_HELP = 'Než začnete zadávat směry, zámek vynulujte: dvakrát pevně stiskněte třmen zámku dolů do těla zámku a pusťte.\n\nPotom postupně zadejte směry. Každý směr posuňte až nadoraz a nechte tlačítko vrátit zpět doprostřed, teprve pak zadejte další směr.\n\nKdyž se spletete, nic se neděje. Zámek znovu dvakrát stiskněte dolů, tím ho vynulujete, a začněte celou sekvenci od začátku.\n\nPo zadání správné sekvence zatáhněte za třmen a zámek se otevře.';
+const WATER_TOWER_HINT_3 = 'Slovo, které jste měli najít v Grollově dopise, je „zkratka“.\n\nNa dešifrovacím kolečku nastavte na vnějším kolečku písmeno H jako had. Na vnitřním kolečku nastavte písmeno A, u kterého vidíte číslo 7.\n\nKaždé písmeno slova „ZKRATKA“ najděte na vnitřním kolečku a na stejném místě přečtěte písmeno z vnějšího kolečka.\n\nPoté na přeložené slovo použijte schéma ve víčku hodinek.';
 function stationIntroForVariant(st, variant=variantForState()){
  if(variant==='short' && Number(st?.id)===13){
   return 'Servus! Tak jste to dokázali. Stojíte před Jubilejní bránou – vítězným obloukem, který tu Plzeňáci postavili v roce 1892 k padesátému výročí mého prvního ležáku. Podívejte se na ni, je to brána do úplně jiného světa. Za těmi zdmi se pivo už skoro dvě stě let vaří, kvasí a zraje.\n\nTady končí vaše putování městem, už žádné další chození, žádné další zastávky, ale ta nejdůležitější práce vás teprve čeká. Teď už nepůjde o hledání. Teď musíte správně použít všechno, co jste po cestě získali.\n\nNejprve si vezměte všech 6 kartiček z jednotlivých zastávek a otevřete to, co zůstalo zavřené. Teprve potom využijte nasbírané lahvičky. Nezapomeňte se rozhlédnout kolem, abyste pochopili zbytek.';
@@ -203,6 +204,7 @@ function stationIntroForVariant(st, variant=variantForState()){
  return st?.intro || '';
 }
 function variantHintOverride(id, num, variant=variantForState()){
+ if(Number(id)===9 && Number(num)===3) return WATER_TOWER_HINT_3;
  if(variant!=='short' || Number(id)!==13) return null;
  if(Number(num)===1) return SHORT_FINAL_USE_DIRECTION_LOCK ? SHORT_FINAL_DIRECTION_LOCK_HINT_1 : 'Vezměte všech 6 kartiček, které jste získali na jednotlivých zastávkách. Na jedné straně mají APP-kód a na druhé směrovou šipku. Kód k zámku získáte tak, že spočítáte, kolikrát se každý směr opakuje. Čísla zapište v pořadí, v jakém se dané směry poprvé objevily během hry.';
  if(Number(num)===2) return SHORT_FINAL_USE_DIRECTION_LOCK ? 'Nyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!' : 'Kód k zámku je 312.\n\nNyní použijete lahvičky. Na spodní straně se nacházejí písmena. Jejich pořadí určují symboly na víčkách.\n\nDívejte se vzhůru!';
@@ -2636,5 +2638,4 @@ let timerInt; function startTimer(){ clearInterval(timerInt); const tick=()=>{ c
 function cacheOffline(){ if(!('serviceWorker' in navigator)) return toast('Service worker není dostupný.'); navigator.serviceWorker.ready.then(reg=>{ reg.active?.postMessage({type:'CACHE_ALL'}); toast('Stahování obsahu spuštěno.'); }); }
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 render();
-
 
