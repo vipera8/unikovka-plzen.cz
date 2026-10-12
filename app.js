@@ -1766,7 +1766,7 @@ function safeJson(value, fallback){
  if(typeof value !== 'string') return value;
  try{ return JSON.parse(value); }catch(e){ return fallback; }
 }
-function onlineTeamSummary(team){
+function onlineTeamSummary(team,index){
  const variant=String(team.variant || inferVariantFromCode(team.accessCode || '', team.orderType || '') || 'long');
  const hints=safeJson(team.hints, team.hints || {});
  const solutions=safeJson(team.solutions, team.solutions || {});
@@ -1776,6 +1776,8 @@ function onlineTeamSummary(team){
  const solutionTotal=Object.values(solutions || {}).filter(Boolean).length;
  const currentId=Number(team.currentStation || 1);
  const st=station(currentId);
+ const finished=String(team.finished||'0')==='1' || team.finished===true;
+ const finishButton=finished ? '' : `<button class="btn admin-finish-team" data-team-index="${index}" style="margin-top:10px" onclick="adminFinishOnlineTeam(${index})">Ukončit a zapsat do žebříčku</button>`;
  const pos=lastPos?.lat
   ? `<a href="https://maps.google.com/?q=${lastPos.lat},${lastPos.lng}" target="_blank" rel="noopener">${Number(lastPos.lat).toFixed(6)}, ${Number(lastPos.lng).toFixed(6)}</a>`
   : 'není dostupná';
@@ -1788,9 +1790,54 @@ function onlineTeamSummary(team){
   <b>Nápovědy celkem:</b> ${hintTotal}<br>
   <b>Řešení celkem:</b> ${solutionTotal}<br>
   <b>Poslední GPS:</b> ${pos}<br>
-  <b>Poslední aktualizace:</b> ${adminDate(team.updatedAt)}</p>
+  <b>Poslední aktualizace:</b> ${adminDate(team._adminLastActivity || team.updatedAt)}</p>
+  ${finishButton}
  </div>`;
 }
+async function adminFinishOnlineTeam(index){
+ const team=(window._onlineAdminTeams || [])[Number(index)];
+ if(!team) return toast('Tým se nepodařilo najít. Obnovte online přehled.');
+ if(String(team.finished||'0')==='1' || team.finished===true) return toast('Tato hra už je ukončená.');
+ const startMs=Number(team.startTime)||Date.parse(team.startTime||'')||0;
+ const activityMs=Date.parse(team._adminLastActivity || team.updatedAt || '')||Number(team.updatedAt)||0;
+ if(!startMs || !activityMs || activityMs<startMs) return toast('Týmu chybí platný začátek nebo poslední aktivita.');
+ const finishMs=Math.min(Date.now(), activityMs + 3*60*1000);
+ const total=finishMs-startMs;
+ const variant=String(team.variant || inferVariantFromCode(team.accessCode || '', team.orderType || '') || 'long');
+ const hints=safeJson(team.hints, {});
+ const solutions=safeJson(team.solutions, {});
+ const hintTotal=Object.values(hints || {}).reduce((sum,n)=>sum+(Number(n)||0),0);
+ const solutionTotal=Object.values(solutions || {}).filter(Boolean).length;
+ const finishIso=new Date(finishMs).toISOString();
+ const question=`Ukončit tým „${team.team || 'Bez názvu'}“ k ${adminDate(finishIso)}?\n\nVýsledný čas: ${fmtTime(total)}\nČas vychází z posledního kliknutí + 3 minuty.`;
+ if(!confirm(question)) return;
+ const btn=document.querySelector(`.admin-finish-team[data-team-index="${Number(index)}"]`);
+ if(btn) btn.disabled=true;
+ try{
+  const stateResult=await backendRequest('state', {
+   id:team.id, team:team.team || '', accessCode:team.accessCode || '', variant,
+   currentStation:13, stationTitle:station(13)?.title || '', startTime:team.startTime,
+   updatedAt:finishIso, finished:1, finishTime:finishMs,
+   hints:JSON.stringify(hints || {}), solutions:JSON.stringify(solutions || {}),
+   wrong:typeof team.wrong==='string' ? team.wrong : JSON.stringify(team.wrong || {}),
+   wrongTotal:Number(team.wrongTotal||0), completed:JSON.stringify(stationIdsForVariant(variant)),
+   lastPos:typeof team.lastPos==='string' ? team.lastPos : JSON.stringify(team.lastPos || '')
+  });
+  if(!stateResult?.ok) throw new Error(stateResult?.error || 'state_failed');
+  const boardResult=await backendRequest('add', {
+   id:team.id, team:team.team || 'Bez názvu', accessCode:team.accessCode || '', variant,
+   total, hints:hintTotal, solutions:solutionTotal, title:titleFor(total,variant), date:finishIso
+  });
+  if(!boardResult?.ok) throw new Error(boardResult?.error || 'leaderboard_failed');
+  toast(`Tým ${team.team || 'Bez názvu'} byl ukončen a zapsán do žebříčku.`);
+  await loadOnlineAdmin();
+ }catch(e){
+  console.error(e);
+  toast('Ukončení se nepodařilo. Data týmu nebyla bezpečně potvrzena.');
+  if(btn) btn.disabled=false;
+ }
+}
+window.adminFinishOnlineTeam=adminFinishOnlineTeam;
 function onlineEventsHtml(events, teams=[]){
  const groups=new Map();
  for(const team of teams){
@@ -1840,6 +1887,13 @@ async function loadOnlineAdmin(){
   if(data?.error === 'unauthorized') throw new Error('Admin heslo nebylo přijato online skriptem.');
   const teams=Array.isArray(data?.teams) ? data.teams : (Array.isArray(data?.rows?.teams) ? data.rows.teams : []);
   const events=Array.isArray(data?.events) ? data.events : (Array.isArray(data?.rows?.events) ? data.rows.events : []);
+  for(const team of teams){
+   const matching=(events || []).filter(e=>(team.accessCode && normalize(e.accessCode||'')===normalize(team.accessCode)) || (team.id && String(e.teamId||'')===String(team.id)));
+   const latestEvent=matching.reduce((latest,e)=>Math.max(latest,Date.parse(e.time||'')||0),0);
+   const teamUpdated=Date.parse(team.updatedAt||'')||Number(team.updatedAt)||0;
+   team._adminLastActivity=new Date(Math.max(latestEvent,teamUpdated)||Date.now()).toISOString();
+  }
+  window._onlineAdminTeams=teams;
   const teamsHtml=teams.length ? teams.map(onlineTeamSummary).join('') : '<p class="small muted">Zatím není online žádný tým.</p>';
   panel.innerHTML=`<h3>Online týmy</h3>${teamsHtml}<h3>Časová osa kliknutí podle týmů</h3><button class="btn ghost admin-export" style="margin-bottom:10px" onclick="loadOnlineAdmin()">Obnovit</button>${onlineEventsHtml(events, teams)}`;
  }catch(e){
